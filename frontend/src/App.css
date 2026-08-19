@@ -1,0 +1,2471 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color: #eaf7ff;
+  background: #020812;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(0, 140, 255, 0.12),
+      transparent 40%
+    ),
+    #020812;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+.app {
+  min-height: 100vh;
+}
+
+.login-page {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(0, 119, 255, 0.14),
+      transparent 42%
+    ),
+    linear-gradient(
+      135deg,
+      #020812,
+      #03101e,
+      #020812
+    );
+}
+
+/* =========================================================
+   ECG BACKGROUND
+========================================================= */
+
+.ecg-background {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+
+  opacity: 0.75;
+
+  pointer-events: none;
+}
+
+.ecg-background svg {
+  width: 100%;
+  height: 220px;
+}
+
+.ecg-line {
+  fill: none;
+
+  stroke: #19bfff;
+  stroke-width: 2.5;
+
+  filter:
+    drop-shadow(0 0 4px #00aaff)
+    drop-shadow(0 0 12px rgba(0, 174, 255, 0.9))
+    drop-shadow(0 0 25px rgba(0, 120, 255, 0.55));
+
+  stroke-dasharray: 120 1080;
+
+  animation:
+    ecgMove 3.5s linear infinite;
+}
+
+@keyframes ecgMove {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -1200;
+  }
+}
+
+/* =========================================================
+   LOGIN CARD
+========================================================= */
+
+.login-card {
+  position: relative;
+  z-index: 5;
+
+  width: min(430px, 90%);
+
+  padding: 42px;
+
+  border-radius: 24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 28, 50, 0.88),
+      rgba(3, 14, 27, 0.92)
+    );
+
+  border: 1px solid rgba(0, 174, 255, 0.25);
+
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.55),
+    0 0 35px rgba(0, 145, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  backdrop-filter: blur(18px);
+
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.login-card:hover {
+  transform: translateY(-5px);
+
+  border-color: rgba(0, 190, 255, 0.5);
+
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.6),
+    0 0 45px rgba(0, 155, 255, 0.2);
+}
+
+.brand-mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.heart-symbol {
+  color: #16bfff;
+  font-size: 42px;
+
+  text-shadow:
+    0 0 8px #00b7ff,
+    0 0 25px #008cff;
+
+  animation: heartPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes heartPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.login-card h1 {
+  margin: 0;
+
+  text-align: center;
+
+  font-size: 32px;
+  font-weight: 800;
+
+  letter-spacing: -1px;
+}
+
+.login-card h1 span {
+  color: #18bfff;
+
+  text-shadow:
+    0 0 10px rgba(0, 180, 255, 0.7);
+}
+
+.subtitle {
+  margin: 8px 0 25px;
+
+  text-align: center;
+
+  color: #7f9caf;
+
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.system-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin-bottom: 30px;
+
+  color: #7ddfff;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+}
+
+.status-dot.online {
+  background: #22e6a5;
+
+  box-shadow:
+    0 0 6px #22e6a5,
+    0 0 14px rgba(34, 230, 165, 0.7);
+}
+
+.status-dot.offline {
+  background: #ff5364;
+
+  box-shadow:
+    0 0 6px #ff5364;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #9cb7c9;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.input-group input {
+  width: 100%;
+
+  padding: 14px 15px;
+
+  color: #eaf7ff;
+
+  background: rgba(1, 12, 24, 0.75);
+
+  border: 1px solid rgba(90, 170, 220, 0.18);
+
+  border-radius: 10px;
+
+  outline: none;
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.input-group input:focus {
+  border-color: #13bfff;
+
+  box-shadow:
+    0 0 0 3px rgba(0, 174, 255, 0.08),
+    0 0 20px rgba(0, 174, 255, 0.12);
+}
+
+.input-group input::placeholder {
+  color: #526b7c;
+}
+
+.login-button {
+  width: 100%;
+
+  padding: 15px;
+
+  margin-top: 5px;
+
+  border: none;
+  border-radius: 11px;
+
+  color: white;
+
+  background:
+    linear-gradient(
+      100deg,
+      #0877ff,
+      #08bfff
+    );
+
+  font-weight: 800;
+  letter-spacing: 1px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 25px rgba(0, 140, 255, 0.25);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.login-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 12px 35px rgba(0, 160, 255, 0.4);
+}
+
+.login-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-message {
+  margin-top: 18px;
+
+  text-align: center;
+
+  color: #5ee6ff;
+
+  font-size: 13px;
+}
+
+.security-text {
+  margin-top: 25px;
+
+  text-align: center;
+
+  color: #587080;
+
+  font-size: 11px;
+
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+.dashboard {
+  position: relative;
+
+  min-height: 100vh;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 50% -10%,
+      rgba(0, 150, 255, 0.12),
+      transparent 38%
+    ),
+    #020812;
+}
+
+/* =========================================================
+   DASHBOARD ECG
+========================================================= */
+
+.dashboard-ecg {
+  position: fixed;
+
+  top: 75px;
+  left: 0;
+
+  width: 100%;
+  height: 180px;
+
+  opacity: 0.13;
+
+  pointer-events: none;
+}
+
+.dashboard-ecg svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.topbar {
+  position: relative;
+  z-index: 10;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 20px 6%;
+
+  border-bottom: 1px solid rgba(0, 174, 255, 0.1);
+
+  background: rgba(2, 11, 22, 0.75);
+
+  backdrop-filter: blur(15px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mini-heart {
+  color: #12bfff;
+
+  font-size: 26px;
+
+  text-shadow:
+    0 0 8px #00aaff,
+    0 0 20px rgba(0, 150, 255, 0.8);
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.brand-title span {
+  color: #15bfff;
+}
+
+.brand-subtitle {
+  margin-top: 2px;
+
+  color: #647e90;
+
+  font-size: 9px;
+
+  letter-spacing: 1px;
+}
+
+.logout-button {
+  padding: 9px 18px;
+
+  color: #89a6b9;
+
+  background: transparent;
+
+  border: 1px solid rgba(120, 170, 200, 0.18);
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  transition: all 0.25s ease;
+}
+
+.logout-button:hover {
+  color: white;
+
+  border-color: #0dbbff;
+
+  box-shadow:
+    0 0 18px rgba(0, 180, 255, 0.15);
+}
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+.dashboard-content {
+  position: relative;
+  z-index: 2;
+
+  width: min(1200px, 90%);
+
+  margin: auto;
+
+  padding: 55px 0 80px;
+}
+
+.dashboard-heading {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: flex-end;
+
+  margin-bottom: 35px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+
+  color: #0dbbff;
+
+  font-family: monospace;
+
+  font-size: 10px;
+
+  letter-spacing: 2px;
+}
+
+.dashboard-heading h2 {
+  margin: 0;
+
+  font-size: clamp(27px, 4vw, 42px);
+
+  letter-spacing: -1.5px;
+}
+
+.dashboard-heading p:not(.eyebrow) {
+  margin: 9px 0 0;
+
+  color: #688294;
+
+  font-size: 13px;
+}
+
+.api-badge {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  padding: 9px 14px;
+
+  color: #7ee6ff;
+
+  border: 1px solid rgba(0, 174, 255, 0.18);
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+}
+
+/* =========================================================
+   PANELS
+========================================================= */
+
+.input-grid {
+  display: grid;
+
+  grid-template-columns: 1.1fr 0.9fr;
+
+  gap: 20px;
+
+  margin-bottom: 20px;
+}
+
+.analysis-grid {
+  display: grid;
+
+  grid-template-columns: 0.95fr 1.05fr;
+
+  gap: 20px;
+}
+
+.panel {
+  position: relative;
+
+  padding: 28px;
+
+  min-height: 300px;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 28, 48, 0.72),
+      rgba(3, 13, 25, 0.86)
+    );
+
+  border: 1px solid rgba(0, 158, 255, 0.16);
+
+  border-radius: 18px;
+
+  backdrop-filter: blur(12px);
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.2);
+
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.panel:hover {
+  transform: translateY(-4px);
+
+  border-color: rgba(0, 185, 255, 0.38);
+
+  box-shadow:
+    0 20px 60px rgba(0, 100, 180, 0.12),
+    inset 0 0 35px rgba(0, 140, 255, 0.025);
+}
+
+.panel-number {
+  position: absolute;
+
+  top: 18px;
+  right: 22px;
+
+  color: rgba(20, 185, 255, 0.22);
+
+  font-family: monospace;
+
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.panel-header {
+  position: relative;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  margin-bottom: 22px;
+}
+
+.panel-label {
+  margin: 0 0 7px;
+
+  color: #0ebdff;
+
+  font-family: monospace;
+
+  font-size: 9px;
+
+  letter-spacing: 1.5px;
+}
+
+.panel h3 {
+  margin: 0;
+
+  font-size: 20px;
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+
+.ready-badge,
+.image-badge,
+.online-badge {
+  padding: 5px 9px;
+
+  border-radius: 6px;
+
+  font-family: monospace;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 1px;
+}
+
+.ready-badge {
+  color: #37e8ad;
+
+  background: rgba(55, 232, 173, 0.06);
+
+  border: 1px solid rgba(55, 232, 173, 0.15);
+}
+
+.image-badge {
+  color: #27c7ff;
+
+  background: rgba(39, 199, 255, 0.06);
+
+  border: 1px solid rgba(39, 199, 255, 0.15);
+}
+
+.online-badge {
+  color: #37e8ad;
+
+  background: rgba(55, 232, 173, 0.06);
+
+  border: 1px solid rgba(55, 232, 173, 0.15);
+}
+
+/* =========================================================
+   TEXTAREA
+========================================================= */
+
+textarea {
+  width: 100%;
+
+  height: 165px;
+
+  resize: none;
+
+  padding: 16px;
+
+  color: #dceeff;
+
+  background: rgba(1, 10, 20, 0.72);
+
+  border: 1px solid rgba(90, 170, 220, 0.13);
+
+  border-radius: 11px;
+
+  outline: none;
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+textarea:focus {
+  border-color: rgba(0, 180, 255, 0.5);
+
+  box-shadow:
+    0 0 25px rgba(0, 150, 255, 0.08);
+}
+
+textarea::placeholder {
+  color: #526b7c;
+}
+
+.character-count {
+  margin-top: 7px;
+
+  text-align: right;
+
+  color: #4e6878;
+
+  font-size: 10px;
+}
+
+/* =========================================================
+   UPLOAD
+========================================================= */
+
+.upload-area {
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  height: 205px;
+
+  border: 1px dashed rgba(0, 174, 255, 0.28);
+
+  border-radius: 12px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(0, 150, 255, 0.07),
+      transparent 65%
+    );
+
+  cursor: pointer;
+
+  overflow: hidden;
+
+  transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+  border-color: #08bfff;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(0, 150, 255, 0.13),
+      transparent 65%
+    );
+
+  box-shadow:
+    inset 0 0 30px rgba(0, 150, 255, 0.04);
+}
+
+.upload-area input {
+  display: none;
+}
+
+.upload-content {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+.upload-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border: 1px solid rgba(0, 190, 255, 0.4);
+
+  border-radius: 50%;
+
+  color: #15bfff;
+
+  font-size: 26px;
+
+  box-shadow:
+    0 0 20px rgba(0, 170, 255, 0.1);
+}
+
+.upload-content strong {
+  font-size: 14px;
+}
+
+.upload-content span {
+  color: #607d8f;
+
+  font-size: 10px;
+}
+
+.xray-preview {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  background: #000;
+}
+
+/* =========================================================
+   FILE NAME
+========================================================= */
+
+.file-name {
+  margin-top: 10px;
+
+  overflow: hidden;
+
+  color: #6cdfff;
+
+  font-family: monospace;
+
+  font-size: 10px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+/* =========================================================
+   ECG
+========================================================= */
+
+.ecg-display {
+  height: 120px;
+
+  margin-bottom: 18px;
+
+  display: flex;
+  align-items: center;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(0, 170, 255, 0.08);
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      rgba(0, 120, 255, 0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(0, 120, 255, 0.025) 1px,
+      transparent 1px
+    );
+
+  background-size: 20px 20px;
+}
+
+.ecg-display svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ecg-display-line {
+  fill: none;
+
+  stroke: #11c6ff;
+
+  stroke-width: 2.4;
+
+  filter:
+    drop-shadow(0 0 4px #00c3ff)
+    drop-shadow(0 0 10px #009fff);
+
+  stroke-dasharray: 700;
+
+  animation:
+    ecgPulse 2.8s linear infinite;
+}
+
+@keyframes ecgPulse {
+  from {
+    stroke-dashoffset: 700;
+  }
+
+  to {
+    stroke-dashoffset: -700;
+  }
+}
+
+.secondary-button {
+  padding: 10px 17px;
+
+  color: #8bdcff;
+
+  background: rgba(0, 120, 200, 0.07);
+
+  border: 1px solid rgba(0, 174, 255, 0.2);
+
+  border-radius: 8px;
+
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  border-color: #0abfff;
+}
+
+.demo-note {
+  margin: 13px 0 0;
+
+  color: #4e6878;
+
+  font-size: 10px;
+}
+
+/* =========================================================
+   MODEL STATUS
+========================================================= */
+
+.model-list {
+  margin-top: 10px;
+}
+
+.model-row {
+  display: flex;
+
+  justify-content: space-between;
+
+  padding: 13px 0;
+
+  color: #8ea6b7;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+
+  font-size: 12px;
+}
+
+.model-row b {
+  color: #3de4ab;
+
+  font-family: monospace;
+
+  font-size: 10px;
+}
+
+.fusion-row {
+  border-bottom: none;
+}
+
+.run-button {
+  width: 100%;
+
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  margin-top: 20px;
+
+  padding: 14px 17px;
+
+  color: white;
+
+  background:
+    linear-gradient(
+      100deg,
+      #086dff,
+      #00bfff
+    );
+
+  border: none;
+
+  border-radius: 10px;
+
+  font-weight: 800;
+
+  letter-spacing: 1px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 25px rgba(0, 145, 255, 0.2);
+
+  transition: all 0.25s ease;
+}
+
+.run-button span {
+  font-size: 20px;
+}
+
+.run-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 12px 35px rgba(0, 160, 255, 0.4);
+}
+
+.run-button:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.error-panel {
+  margin-top: 20px;
+
+  padding: 14px 18px;
+
+  color: #ff8792;
+
+  background: rgba(255, 60, 80, 0.05);
+
+  border: 1px solid rgba(255, 70, 90, 0.18);
+
+  border-radius: 10px;
+
+  font-size: 12px;
+}
+
+/* =========================================================
+   RESULT
+========================================================= */
+
+.result-panel {
+  margin-top: 20px;
+
+  padding: 30px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 32, 55, 0.86),
+      rgba(3, 14, 28, 0.92)
+    );
+
+  border: 1px solid rgba(0, 185, 255, 0.3);
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 0 45px rgba(0, 140, 255, 0.08);
+}
+
+.result-header {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.result-header h2 {
+  margin: 0;
+
+  font-size: 24px;
+}
+
+.result-status {
+  padding: 7px 12px;
+
+  color: #3de4ab;
+
+  border: 1px solid rgba(61, 228, 171, 0.2);
+
+  border-radius: 7px;
+
+  font-family: monospace;
+
+  font-size: 9px;
+}
+
+.result-content {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 18px;
+
+  margin-top: 25px;
+}
+
+.probability-box,
+.risk-box {
+  padding: 22px;
+
+  border-radius: 12px;
+
+  background: rgba(0, 10, 20, 0.45);
+
+  border: 1px solid rgba(100, 170, 210, 0.1);
+}
+
+.probability-box span,
+.risk-box span {
+  display: block;
+
+  color: #607b8d;
+
+  font-family: monospace;
+
+  font-size: 9px;
+
+  letter-spacing: 1.3px;
+}
+
+.probability-box strong {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #17c5ff;
+
+  font-size: 38px;
+
+  text-shadow:
+    0 0 15px rgba(0, 190, 255, 0.3);
+}
+
+.progress-bar {
+  height: 6px;
+
+  margin-top: 15px;
+
+  overflow: hidden;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  border-radius: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+
+  background:
+    linear-gradient(
+      90deg,
+      #087cff,
+      #12c8ff
+    );
+
+  box-shadow:
+    0 0 12px rgba(0, 190, 255, 0.6);
+
+  transition: width 1s ease;
+}
+
+.risk-box strong {
+  display: block;
+
+  margin-top: 9px;
+
+  font-size: 25px;
+}
+
+.high-risk {
+  border-color: rgba(255, 80, 100, 0.25);
+}
+
+.high-risk strong {
+  color: #ff6978;
+
+  text-shadow:
+    0 0 12px rgba(255, 70, 90, 0.25);
+}
+
+.low-risk {
+  border-color: rgba(40, 220, 165, 0.2);
+}
+
+.low-risk strong {
+  color: #3de4ab;
+}
+
+.research-warning {
+  margin: 22px 0 0;
+
+  color: #526c7d;
+
+  font-size: 10px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 850px) {
+  .dashboard-heading {
+    flex-direction: column;
+    align-items: flex-start;
+
+    gap: 18px;
+  }
+
+  .input-grid,
+  .analysis-grid,
+  .result-content {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-content {
+    width: 92%;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    padding: 30px 24px;
+  }
+
+  .topbar {
+    padding: 17px 4%;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .panel {
+    padding: 22px;
+  }
+
+  .dashboard-content {
+    padding-top: 35px;
+  }
+}
+/* =========================================================
+   PATIENT MANAGEMENT
+========================================================= */
+
+.patient-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0, 10, 22, 0.55);
+  border: 1px solid rgba(0, 174, 255, 0.12);
+}
+
+.patient-selector select {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 13px;
+
+  color: #dff5ff;
+  background: rgba(3, 18, 32, 0.9);
+
+  border: 1px solid rgba(80, 170, 220, 0.18);
+  border-radius: 9px;
+
+  outline: none;
+  cursor: pointer;
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.patient-selector select:hover {
+  border-color: rgba(0, 185, 255, 0.35);
+}
+
+.patient-selector select:focus {
+  border-color: #0dbbff;
+
+  box-shadow:
+    0 0 0 3px rgba(0, 174, 255, 0.08),
+    0 0 20px rgba(0, 174, 255, 0.08);
+}
+
+.patient-selector select option {
+  color: #dff5ff;
+  background: #061523;
+}
+
+
+/* =========================================================
+   ADD PATIENT FORM
+========================================================= */
+
+.patient-form {
+  position: relative;
+
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 1fr;
+  gap: 12px;
+
+  padding: 18px;
+
+  margin-bottom: 18px;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(5, 24, 42, 0.8),
+      rgba(2, 12, 24, 0.72)
+    );
+
+  border: 1px solid rgba(0, 174, 255, 0.14);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.patient-form::before {
+  content: "NEW PATIENT REGISTRATION";
+
+  grid-column: 1 / -1;
+
+  margin-bottom: 2px;
+
+  color: #0dbbff;
+
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 1.6px;
+}
+
+
+/* =========================================================
+   PATIENT FORM FIELDS
+========================================================= */
+
+.patient-form input,
+.patient-form select {
+  width: 100%;
+  height: 44px;
+
+  box-sizing: border-box;
+
+  padding: 0 13px;
+
+  color: #e5f7ff;
+
+  background: rgba(1, 10, 20, 0.78);
+
+  border: 1px solid rgba(90, 170, 220, 0.16);
+
+  border-radius: 9px;
+
+  outline: none;
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+}
+
+.patient-form input::placeholder {
+  color: #526c7d;
+}
+
+.patient-form input:hover,
+.patient-form select:hover {
+  border-color: rgba(0, 180, 255, 0.3);
+}
+
+.patient-form input:focus,
+.patient-form select:focus {
+  border-color: #0dbbff;
+
+  box-shadow:
+    0 0 0 3px rgba(0, 174, 255, 0.07),
+    0 0 18px rgba(0, 174, 255, 0.1);
+}
+
+.patient-form select option {
+  color: #e5f7ff;
+  background: #061523;
+}
+
+
+/* =========================================================
+   ADD PATIENT BUTTON
+========================================================= */
+
+.patient-form .run-button {
+  grid-column: 1 / -1;
+
+  margin-top: 2px;
+}
+
+.patient-form .run-button:hover {
+  transform: translateY(-2px);
+}
+
+
+/* =========================================================
+   SELECTED PATIENT
+========================================================= */
+
+.selected-patient {
+  position: relative;
+
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.4fr)
+    repeat(3, 1fr);
+
+  gap: 0;
+
+  margin-bottom: 20px;
+
+  padding: 0;
+
+  overflow: hidden;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(8, 32, 53, 0.8),
+      rgba(2, 14, 27, 0.85)
+    );
+
+  border: 1px solid rgba(0, 174, 255, 0.17);
+
+  box-shadow:
+    0 15px 35px rgba(0, 0, 0, 0.18);
+}
+
+.selected-patient::before {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 3px;
+
+  background: #10bfff;
+
+  box-shadow:
+    0 0 14px rgba(0, 190, 255, 0.7);
+}
+
+
+.selected-patient div {
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+
+  min-height: 76px;
+
+  padding: 14px 17px;
+
+  border-right:
+    1px solid rgba(255, 255, 255, 0.045);
+}
+
+.selected-patient div:last-child {
+  border-right: none;
+}
+
+
+.selected-patient span {
+  margin-bottom: 7px;
+
+  color: #607b8d;
+
+  font-family: monospace;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.3px;
+}
+
+
+.selected-patient strong {
+  color: #dff5ff;
+
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   PATIENT NAME EMPHASIS
+========================================================= */
+
+.selected-patient div:first-child strong {
+  color: #16c5ff;
+
+  font-size: 16px;
+
+  text-shadow:
+    0 0 12px rgba(0, 185, 255, 0.2);
+}
+
+
+/* =========================================================
+   CLINICAL SECTION
+========================================================= */
+
+.clinical-section {
+  position: relative;
+
+  margin-top: 8px;
+}
+
+.clinical-section::before {
+  content: "CLINICAL NOTES";
+
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #0dbbff;
+
+  font-family: monospace;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+}
+
+.clinical-section textarea {
+  width: 100%;
+
+  min-height: 140px;
+
+  box-sizing: border-box;
+
+  padding: 15px;
+
+  color: #dceeff;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(1, 11, 21, 0.8),
+      rgba(3, 17, 29, 0.65)
+    );
+
+  border: 1px solid rgba(90, 170, 220, 0.14);
+
+  border-radius: 11px;
+
+  outline: none;
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.clinical-section textarea:focus {
+  border-color: rgba(0, 185, 255, 0.45);
+
+  box-shadow:
+    0 0 0 3px rgba(0, 174, 255, 0.05),
+    0 0 25px rgba(0, 150, 255, 0.08);
+}
+
+.clinical-section textarea:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   CURRENT PATIENT BADGE
+========================================================= */
+
+.current-patient-badge {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 7px 11px;
+
+  color: #82a5b8;
+
+  background:
+    rgba(0, 140, 220, 0.055);
+
+  border:
+    1px solid rgba(0, 174, 255, 0.12);
+
+  border-radius: 8px;
+
+  font-family: monospace;
+
+  font-size: 9px;
+
+  letter-spacing: 0.7px;
+}
+
+.current-patient-badge::before {
+  content: "";
+
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #22e6a5;
+
+  box-shadow:
+    0 0 7px #22e6a5;
+}
+
+.current-patient-badge strong {
+  color: #cdefff;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   TOPBAR ACTIONS
+========================================================= */
+
+.topbar-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+
+/* =========================================================
+   RESULT PATIENT
+========================================================= */
+
+.result-patient {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  margin: 20px 0;
+
+  padding: 13px 16px;
+
+  color: #9bb8c9;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 160, 255, 0.055),
+      rgba(255, 255, 255, 0.02)
+    );
+
+  border:
+    1px solid rgba(0, 174, 255, 0.12);
+
+  border-radius: 10px;
+}
+
+.result-patient::before {
+  content: "PATIENT";
+
+  padding: 4px 7px;
+
+  color: #0dbbff;
+
+  background: rgba(0, 174, 255, 0.07);
+
+  border: 1px solid rgba(0, 174, 255, 0.12);
+
+  border-radius: 5px;
+
+  font-family: monospace;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 1px;
+}
+
+.result-patient span {
+  color: #607b8d;
+
+  font-family: monospace;
+
+  font-size: 9px;
+
+  letter-spacing: 1px;
+}
+
+.result-patient strong {
+  margin-right: 20px;
+
+  color: #dff5ff;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   PATIENT EMPTY STATE
+========================================================= */
+
+.patient-selector:has(select:only-child) {
+  min-height: 44px;
+}
+
+
+/* =========================================================
+   RESPONSIVE PATIENT UI
+========================================================= */
+
+@media (max-width: 1000px) {
+
+  .patient-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .patient-form::before {
+    grid-column: 1 / -1;
+  }
+
+  .selected-patient {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .selected-patient div:nth-child(2) {
+    border-right: none;
+  }
+
+  .selected-patient div {
+    border-bottom:
+      1px solid rgba(255, 255, 255, 0.045);
+  }
+
+}
+
+
+@media (max-width: 700px) {
+
+  .patient-selector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .patient-selector select {
+    width: 100%;
+  }
+
+  .patient-form {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-form .run-button {
+    grid-column: auto;
+  }
+
+  .selected-patient {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-patient div,
+  .selected-patient div:nth-child(2) {
+    border-right: none;
+    border-bottom:
+      1px solid rgba(255, 255, 255, 0.045);
+  }
+
+  .selected-patient div:last-child {
+    border-bottom: none;
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .result-patient {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .result-patient strong {
+    margin-right: 0;
+  }
+
+}
+/* =========================================================
+   PATIENT MANAGEMENT - FINAL
+========================================================= */
+
+.patient-management {
+  min-height: auto;
+  margin-bottom: 20px;
+}
+
+
+.patient-selector {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+
+.patient-selector select,
+.patient-form select,
+.patient-form input {
+  min-height: 44px;
+  padding: 11px 13px;
+
+  color: #dff5ff;
+
+  background: rgba(1, 10, 20, 0.8);
+
+  border: 1px solid rgba(90, 170, 220, 0.18);
+
+  border-radius: 9px;
+
+  outline: none;
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+
+.patient-selector select {
+  flex: 1;
+}
+
+
+.patient-selector select:focus,
+.patient-form select:focus,
+.patient-form input:focus {
+  border-color: #0dbbff;
+
+  box-shadow:
+    0 0 0 3px rgba(0, 174, 255, 0.06),
+    0 0 20px rgba(0, 174, 255, 0.08);
+}
+
+
+.patient-selector select option,
+.patient-form select option {
+  background: #061321;
+  color: #eaf7ff;
+}
+
+
+/* =========================================================
+   PATIENT FORM
+========================================================= */
+
+.patient-form {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 14px;
+
+  padding: 20px;
+
+  margin-bottom: 20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(0, 150, 255, 0.045),
+      rgba(255, 255, 255, 0.015)
+    );
+
+  border:
+    1px solid rgba(0, 174, 255, 0.12);
+
+  border-radius: 14px;
+}
+
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+
+.form-field label {
+  color: #7190a2;
+
+  font-family: monospace;
+
+  font-size: 9px;
+
+  letter-spacing: 1.3px;
+}
+
+
+.patient-form .run-button {
+  grid-column: 1 / -1;
+
+  margin-top: 4px;
+}
+
+
+/* =========================================================
+   SELECTED PATIENT
+========================================================= */
+
+.selected-patient {
+  display: grid;
+
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr));
+
+  gap: 12px;
+
+  padding: 17px;
+
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(0, 160, 255, 0.055),
+      rgba(255, 255, 255, 0.018)
+    );
+
+  border:
+    1px solid rgba(0, 174, 255, 0.12);
+}
+
+
+.selected-patient div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+
+  min-width: 0;
+}
+
+
+.selected-patient span {
+  color: #5f7a8b;
+
+  font-family: monospace;
+
+  font-size: 8px;
+
+  letter-spacing: 1.1px;
+}
+
+
+.selected-patient strong {
+  overflow: hidden;
+
+  color: #dff4ff;
+
+  font-size: 13px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   TOPBAR PATIENT
+========================================================= */
+
+.topbar-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+
+.current-patient-badge {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 8px 12px;
+
+  background:
+    rgba(0, 174, 255, 0.05);
+
+  border:
+    1px solid rgba(0, 174, 255, 0.14);
+
+  border-radius: 8px;
+
+  font-family: monospace;
+}
+
+
+.current-patient-badge span {
+  color: #4f7285;
+
+  font-size: 8px;
+
+  letter-spacing: 1px;
+}
+
+
+.current-patient-badge strong {
+  color: #83ddff;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   ECG UPLOAD
+========================================================= */
+
+.ecg-upload {
+  position: relative;
+
+  display: block;
+
+  height: 120px;
+
+  overflow: hidden;
+
+  cursor: pointer;
+}
+
+
+.ecg-upload input {
+  display: none;
+}
+
+
+.ecg-upload .ecg-display {
+  position: relative;
+
+  width: 100%;
+
+  height: 120px;
+
+  margin: 0;
+}
+
+
+.ecg-upload-overlay {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 6px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(0, 120, 255, 0.07),
+      transparent 65%
+    );
+
+  pointer-events: none;
+}
+
+
+.ecg-upload-overlay strong {
+  color: #dff7ff;
+
+  font-size: 13px;
+
+  text-shadow:
+    0 0 12px rgba(0, 180, 255, 0.35);
+}
+
+
+.ecg-upload-overlay span {
+  color: #607d8f;
+
+  font-size: 9px;
+}
+
+
+.ecg-upload:hover .ecg-display {
+  border-color: rgba(0, 190, 255, 0.35);
+
+  box-shadow:
+    inset 0 0 30px rgba(0, 150, 255, 0.05);
+}
+
+
+.ecg-preview-image {
+  width: 100%;
+
+  height: 120px;
+
+  object-fit: contain;
+
+  background: #01070d;
+
+  border:
+    1px solid rgba(0, 174, 255, 0.12);
+
+  border-radius: 10px;
+}
+
+
+.upload-disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   HISTORY
+========================================================= */
+
+.history-panel {
+  margin-top: 20px;
+
+  padding: 28px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 28, 48, 0.72),
+      rgba(3, 13, 25, 0.86)
+    );
+
+  border:
+    1px solid rgba(0, 158, 255, 0.16);
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+
+.history-header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: flex-start;
+
+  margin-bottom: 22px;
+}
+
+
+.history-header h2 {
+  margin: 0;
+
+  font-size: 23px;
+}
+
+
+.history-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+
+.history-row {
+  display: grid;
+
+  grid-template-columns:
+    1.5fr
+    0.7fr
+    1fr
+    0.8fr;
+
+  gap: 15px;
+
+  align-items: center;
+
+  padding: 15px 17px;
+
+  background:
+    rgba(255, 255, 255, 0.018);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.045);
+
+  border-radius: 10px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+
+.history-row:hover {
+  background:
+    rgba(0, 160, 255, 0.035);
+
+  border-color:
+    rgba(0, 174, 255, 0.12);
+}
+
+
+.history-row > div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  min-width: 0;
+}
+
+
+.history-label {
+  color: #506c7d;
+
+  font-family: monospace;
+
+  font-size: 8px;
+
+  letter-spacing: 1.1px;
+}
+
+
+.history-row strong {
+  overflow: hidden;
+
+  color: #cfe8f4;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.history-high {
+  color: #ff6978 !important;
+}
+
+
+.history-low {
+  color: #3de4ab !important;
+}
+
+
+.history-empty {
+  padding: 35px 20px;
+
+  text-align: center;
+
+  color: #587383;
+
+  background:
+    rgba(0, 0, 0, 0.15);
+
+  border:
+    1px dashed rgba(100, 170, 210, 0.12);
+
+  border-radius: 11px;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   RESULT PATIENT
+========================================================= */
+
+.result-patient {
+  display: flex;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  gap: 9px;
+
+  margin-top: 20px;
+
+  padding: 13px 15px;
+
+  background:
+    rgba(255, 255, 255, 0.025);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.06);
+
+  border-radius: 9px;
+}
+
+
+.result-patient span {
+  color: #536f80;
+
+  font-family: monospace;
+
+  font-size: 8px;
+
+  letter-spacing: 1px;
+}
+
+
+.result-patient strong {
+  margin-right: 18px;
+
+  color: #bfe9f7;
+
+  font-size: 11px;
+}
+
+
+.dashboard-warning {
+  margin-top: 30px;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   RESPONSIVE PATIENT UI
+========================================================= */
+
+@media (max-width: 1000px) {
+
+  .selected-patient {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+  .history-row {
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+}
+
+
+@media (max-width: 850px) {
+
+  .patient-form {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-form .run-button {
+    grid-column: auto;
+  }
+
+  .selected-patient {
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+  .patient-selector {
+    flex-direction: column;
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .selected-patient {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .current-patient-badge {
+    display: none;
+  }
+
+  .history-panel {
+    padding: 20px;
+  }
+
+  .history-row {
+    grid-template-columns: 1fr;
+  }
+
+  .result-patient {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 4px;
+  }
+
+}
