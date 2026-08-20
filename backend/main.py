@@ -28,13 +28,15 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
-        "https://cardiope-ai.vercel.app",
-        "https://cardiope-ai-k7xc.vercel.app",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://cardiope-ai.vercel.app",
+        "https://cardiope-ai-k7xc.vercel.app",
     ],
 
-    allow_credentials=True,
+    allow_origin_regex=r"https://cardiope-ai(-k7xc)?\.vercel\.app",
+
+    allow_credentials=False,
 
     allow_methods=["*"],
 
