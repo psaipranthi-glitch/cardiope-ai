@@ -1,8 +1,10 @@
 backend/
 ml/
+cv/
+nlp/
 data/
+database/
 venv/
-.venv/
 __pycache__/
 *.pyc
 *.pth
@@ -14,3 +16,5 @@ __pycache__/
 node_modules/
 requirements.txt
 render.yaml
+.env
+.env.local
