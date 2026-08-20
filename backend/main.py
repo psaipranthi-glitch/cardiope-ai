@@ -30,7 +30,6 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-
         "https://cardiope-ai-k7xc.vercel.app",
     ],
 
@@ -48,21 +47,13 @@ app.add_middleware(
 # ROUTERS
 # ============================================================
 
-app.include_router(
-    auth_router
-)
+app.include_router(auth_router)
 
-app.include_router(
-    patients_router
-)
+app.include_router(patients_router)
 
-app.include_router(
-    prediction_router
-)
+app.include_router(prediction_router)
 
-app.include_router(
-    patient_predictions_router
-)
+app.include_router(patient_predictions_router)
 
 
 # ============================================================

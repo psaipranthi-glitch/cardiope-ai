@@ -73,7 +73,7 @@ os.makedirs(
 
 
 # ============================================================
-# SAVE FILE
+# SAVE UPLOAD
 # ============================================================
 
 async def save_uploaded_file(
@@ -93,9 +93,7 @@ async def save_uploaded_file(
 
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Unsupported {prefix} file type."
-            )
+            detail=f"Unsupported {prefix} file type."
         )
 
 
@@ -113,9 +111,7 @@ async def save_uploaded_file(
 
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Unsupported {prefix} file extension."
-            )
+            detail=f"Unsupported {prefix} file extension."
         )
 
 
@@ -139,9 +135,7 @@ async def save_uploaded_file(
 
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Uploaded {prefix} file is empty."
-            )
+            detail=f"Uploaded {prefix} file is empty."
         )
 
 
@@ -150,15 +144,10 @@ async def save_uploaded_file(
         "wb"
     ) as file:
 
-        file.write(
-            contents
-        )
+        file.write(contents)
 
 
-    return (
-        filename,
-        file_path
-    )
+    return filename, file_path
 
 
 # ============================================================
@@ -179,7 +168,6 @@ async def predict(
     current_user=Depends(
         get_current_user
     )
-
 ):
 
     # ========================================================
@@ -207,17 +195,22 @@ async def predict(
     )
 
 
+    if not doctor_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication token."
+        )
+
+
     # ========================================================
     # PATIENT
     # ========================================================
 
     patient = patients_collection.find_one(
         {
-            "patient_id":
-                patient_id,
-
-            "doctor_id":
-                doctor_id
+            "patient_id": patient_id,
+            "doctor_id": doctor_id
         }
     )
 
@@ -248,7 +241,7 @@ async def predict(
 
 
     # ========================================================
-    # FILE PATHS
+    # PATH VARIABLES
     # ========================================================
 
     xray_filename = None
@@ -264,26 +257,6 @@ async def predict(
         # X-RAY
         # ====================================================
 
-        xray_allowed_types = {
-
-            "image/jpeg",
-
-            "image/jpg",
-
-            "image/png"
-        }
-
-
-        xray_allowed_extensions = {
-
-            ".jpg",
-
-            ".jpeg",
-
-            ".png"
-        }
-
-
         (
             xray_filename,
             xray_path
@@ -293,9 +266,17 @@ async def predict(
 
             XRAY_UPLOAD_DIR,
 
-            xray_allowed_types,
+            {
+                "image/jpeg",
+                "image/jpg",
+                "image/png"
+            },
 
-            xray_allowed_extensions,
+            {
+                ".jpg",
+                ".jpeg",
+                ".png"
+            },
 
             "xray"
         )
@@ -304,26 +285,6 @@ async def predict(
         # ====================================================
         # ECG
         # ====================================================
-
-        ecg_allowed_types = {
-
-            "image/jpeg",
-
-            "image/jpg",
-
-            "image/png"
-        }
-
-
-        ecg_allowed_extensions = {
-
-            ".jpg",
-
-            ".jpeg",
-
-            ".png"
-        }
-
 
         (
             ecg_filename,
@@ -334,9 +295,17 @@ async def predict(
 
             ECG_UPLOAD_DIR,
 
-            ecg_allowed_types,
+            {
+                "image/jpeg",
+                "image/jpg",
+                "image/png"
+            },
 
-            ecg_allowed_extensions,
+            {
+                ".jpg",
+                ".jpeg",
+                ".png"
+            },
 
             "ecg"
         )
@@ -347,10 +316,10 @@ async def predict(
         # ====================================================
 
         print()
-        print("=" * 65)
+        print("=" * 70)
         print("CARDIOPE-AI")
-        print("MULTIMODAL PREDICTION")
-        print("=" * 65)
+        print("MULTIMODAL CARDIAC PREDICTION")
+        print("=" * 70)
 
         print(
             "Doctor:",
@@ -368,24 +337,21 @@ async def predict(
         )
 
         print(
-            "Clinical:",
-            clinical_text
+            "Clinical length:",
+            len(clinical_text)
         )
 
         print(
             "X-Ray:",
-            xray_path
+            xray_filename
         )
 
         print(
             "ECG:",
-            ecg_path
+            ecg_filename
         )
 
-        print()
-        print(
-            "Running CardioFusion..."
-        )
+        print("=" * 70)
 
 
         # ====================================================
@@ -394,19 +360,16 @@ async def predict(
 
         result = predict_fusion(
 
-            clinical_text=
-                clinical_text,
+            clinical_text=clinical_text,
 
-            image_path=
-                xray_path,
+            image_path=xray_path,
 
-            ecg_path=
-                ecg_path
+            ecg_path=ecg_path
         )
 
 
         # ====================================================
-        # VALIDATE
+        # VALIDATION
         # ====================================================
 
         if not isinstance(
@@ -415,7 +378,7 @@ async def predict(
         ):
 
             raise ValueError(
-                "Fusion model returned an invalid result."
+                "Fusion model returned invalid result."
             )
 
 
@@ -454,7 +417,7 @@ async def predict(
         else:
 
             raise ValueError(
-                "Model did not return a probability."
+                "Model did not return probability."
             )
 
 
@@ -491,13 +454,10 @@ async def predict(
         # ASSESSMENT
         # ====================================================
 
-        if (
-            not isinstance(
-                assessment,
-                str
-            )
-            or not assessment.strip()
-        ):
+        if not isinstance(
+            assessment,
+            str
+        ) or not assessment.strip():
 
             assessment = (
 
@@ -515,7 +475,7 @@ async def predict(
 
 
         # ====================================================
-        # NORMALIZED RESULT
+        # RESULT
         # ====================================================
 
         normalized_result = {
@@ -540,7 +500,7 @@ async def predict(
 
 
         # ====================================================
-        # SAVE PREDICTION
+        # SAVE
         # ====================================================
 
         prediction_id = str(
@@ -602,13 +562,13 @@ async def predict(
 
 
         # ====================================================
-        # LOG RESULT
+        # LOG
         # ====================================================
 
         print()
-        print("=" * 65)
-        print("CARDIOPE-AI RESULT")
-        print("=" * 65)
+        print("=" * 70)
+        print("PREDICTION COMPLETED")
+        print("=" * 70)
 
         print(
             "Patient:",
@@ -635,7 +595,7 @@ async def predict(
             prediction_id
         )
 
-        print("=" * 65)
+        print("=" * 70)
 
 
         # ====================================================
@@ -675,13 +635,11 @@ async def predict(
         }
 
 
-    # ========================================================
-    # ERROR
-    # ========================================================
-
     except HTTPException:
 
-        # Remove X-ray
+        # ====================================================
+        # CLEANUP X-RAY
+        # ====================================================
 
         try:
 
@@ -701,7 +659,9 @@ async def predict(
             pass
 
 
-        # Remove ECG
+        # ====================================================
+        # CLEANUP ECG
+        # ====================================================
 
         try:
 
@@ -727,18 +687,20 @@ async def predict(
     except Exception as e:
 
         print()
-        print("=" * 65)
-        print("CARDIOPE-AI ERROR")
-        print("=" * 65)
+        print("=" * 70)
+        print("CARDIOPE-AI PREDICTION ERROR")
+        print("=" * 70)
 
         print(
             repr(e)
         )
 
-        print("=" * 65)
+        print("=" * 70)
 
 
-        # Remove X-ray
+        # ====================================================
+        # CLEANUP X-RAY
+        # ====================================================
 
         try:
 
@@ -758,7 +720,9 @@ async def predict(
             pass
 
 
-        # Remove ECG
+        # ====================================================
+        # CLEANUP ECG
+        # ====================================================
 
         try:
 
@@ -782,7 +746,5 @@ async def predict(
 
             status_code=500,
 
-            detail=(
-                f"Prediction failed: {str(e)}"
-            )
+            detail=f"Prediction failed: {str(e)}"
         )
