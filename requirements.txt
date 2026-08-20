@@ -21,7 +21,6 @@ transformers==4.48.3
 huggingface_hub==0.27.1
 safetensors==0.5.2
 tokenizers==0.21.0
-sentencepiece==0.2.0
 
 opencv-python-headless==4.10.0.84
 pillow==11.1.0
