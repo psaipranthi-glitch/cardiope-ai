@@ -1,24 +1,26 @@
 fastapi==0.141.1
 uvicorn==0.52.3
+
 pymongo==4.17.0
 python-multipart==0.0.32
 python-dotenv==1.2.3
+
 pydantic==2.13.4
 email-validator==2.3.0
 python-jose==3.5.0
 passlib==1.7.4
 bcrypt==5.0.0
 
-numpy==2.2.6
+numpy==1.26.4
 pandas==2.2.3
 scikit-learn==1.6.1
-scipy==1.15.3
+scipy==1.14.1
 joblib==1.4.2
 
-transformers==4.48.3
-huggingface_hub==0.28.1
+transformers==4.57.3
+huggingface_hub==0.36.0
 safetensors==0.5.3
-tokenizers==0.21.0
+tokenizers==0.22.1
 sentencepiece==0.2.0
 
 opencv-python-headless==4.10.0.84
