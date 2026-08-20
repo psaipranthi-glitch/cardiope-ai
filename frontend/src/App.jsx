@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API =  "http://127.0.0.1:8001";
+const API = "/api";
 
 function App() {
   /* =========================================================
