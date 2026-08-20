@@ -1,5 +1,6 @@
 import os
 import uuid
+import traceback
 
 from datetime import datetime, timezone
 
@@ -22,19 +23,11 @@ from backend.database import (
 from ml.fusion.predict import predict_fusion
 
 
-# ============================================================
-# ROUTER
-# ============================================================
-
 router = APIRouter(
     prefix="/predict",
     tags=["Prediction"]
 )
 
-
-# ============================================================
-# PATHS
-# ============================================================
 
 BASE_DIR = os.path.abspath(
     os.path.join(
@@ -52,7 +45,6 @@ XRAY_UPLOAD_DIR = os.path.join(
     "uploads"
 )
 
-
 ECG_UPLOAD_DIR = os.path.join(
     BASE_DIR,
     "data",
@@ -61,20 +53,9 @@ ECG_UPLOAD_DIR = os.path.join(
 )
 
 
-os.makedirs(
-    XRAY_UPLOAD_DIR,
-    exist_ok=True
-)
+os.makedirs(XRAY_UPLOAD_DIR, exist_ok=True)
+os.makedirs(ECG_UPLOAD_DIR, exist_ok=True)
 
-os.makedirs(
-    ECG_UPLOAD_DIR,
-    exist_ok=True
-)
-
-
-# ============================================================
-# SAVE UPLOAD
-# ============================================================
 
 async def save_uploaded_file(
     upload: UploadFile,
@@ -88,32 +69,25 @@ async def save_uploaded_file(
         upload.content_type or ""
     ).lower()
 
-
     if content_type not in allowed_types:
-
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported {prefix} file type."
         )
 
-
     original_filename = (
         upload.filename or ""
     )
-
 
     extension = os.path.splitext(
         original_filename
     )[1].lower()
 
-
     if extension not in allowed_extensions:
-
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported {prefix} file extension."
         )
-
 
     filename = (
         f"{prefix}_"
@@ -121,38 +95,30 @@ async def save_uploaded_file(
         f"{extension}"
     )
 
-
     file_path = os.path.join(
         directory,
         filename
     )
 
-
     contents = await upload.read()
 
-
     if not contents:
-
         raise HTTPException(
             status_code=400,
             detail=f"Uploaded {prefix} file is empty."
         )
 
-
-    with open(
-        file_path,
-        "wb"
-    ) as file:
-
+    with open(file_path, "wb") as file:
         file.write(contents)
 
+    print(
+        f"[UPLOAD] {prefix}: "
+        f"{filename} "
+        f"({len(contents) / 1024 / 1024:.2f} MB)"
+    )
 
     return filename, file_path
 
-
-# ============================================================
-# PREDICTION
-# ============================================================
 
 @router.post("/")
 async def predict(
@@ -168,90 +134,88 @@ async def predict(
     current_user=Depends(
         get_current_user
     )
+
 ):
 
-    # ========================================================
-    # AUTH
-    # ========================================================
+    print("\n" + "=" * 70)
+    print("PREDICTION REQUEST RECEIVED")
+    print("=" * 70)
 
-    if not current_user:
-
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required."
-        )
-
-
-    if current_user.get("role") != "doctor":
-
-        raise HTTPException(
-            status_code=403,
-            detail="Doctor authorization required."
-        )
-
-
-    doctor_id = current_user.get(
-        "user_id"
-    )
-
-
-    if not doctor_id:
-
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid authentication token."
-        )
-
-
-    # ========================================================
-    # PATIENT
-    # ========================================================
-
-    patient = patients_collection.find_one(
-        {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id
-        }
-    )
-
-
-    if not patient:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Patient not found."
-        )
-
-
-    # ========================================================
-    # CLINICAL
-    # ========================================================
-
-    clinical_text = (
-        clinical_text or ""
-    ).strip()
-
-
-    if not clinical_text:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Clinical information is required."
-        )
-
-
-    # ========================================================
-    # PATH VARIABLES
-    # ========================================================
-
-    xray_filename = None
     xray_path = None
-
-    ecg_filename = None
     ecg_path = None
 
-
     try:
+
+        # ====================================================
+        # AUTH
+        # ====================================================
+
+        if not current_user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required."
+            )
+
+        if current_user.get("role") != "doctor":
+            raise HTTPException(
+                status_code=403,
+                detail="Doctor authorization required."
+            )
+
+        doctor_id = current_user.get("user_id")
+
+        if not doctor_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication token."
+            )
+
+        print("[1/8] Authentication OK")
+
+
+        # ====================================================
+        # PATIENT
+        # ====================================================
+
+        patient = patients_collection.find_one(
+            {
+                "patient_id": patient_id,
+                "doctor_id": doctor_id
+            }
+        )
+
+        if not patient:
+            raise HTTPException(
+                status_code=404,
+                detail="Patient not found."
+            )
+
+        print(
+            "[2/8] Patient OK:",
+            patient.get("name")
+        )
+
+
+        # ====================================================
+        # CLINICAL
+        # ====================================================
+
+        clinical_text = (
+            clinical_text or ""
+        ).strip()
+
+        if not clinical_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Clinical information is required."
+            )
+
+        print(
+            "[3/8] Clinical text OK:",
+            len(clinical_text),
+            "characters"
+        )
+
 
         # ====================================================
         # X-RAY
@@ -279,6 +243,11 @@ async def predict(
             },
 
             "xray"
+        )
+
+        print(
+            "[4/8] X-Ray saved:",
+            xray_path
         )
 
 
@@ -310,52 +279,32 @@ async def predict(
             "ecg"
         )
 
+        print(
+            "[5/8] ECG saved:",
+            ecg_path
+        )
+
 
         # ====================================================
-        # LOG
+        # MODEL START
         # ====================================================
 
         print()
         print("=" * 70)
-        print("CARDIOPE-AI")
-        print("MULTIMODAL CARDIAC PREDICTION")
+        print("[6/8] STARTING FUSION MODEL")
         print("=" * 70)
 
-        print(
-            "Doctor:",
-            doctor_id
-        )
+        print("Clinical:", len(clinical_text))
+        print("X-Ray:", xray_path)
+        print("ECG:", ecg_path)
 
         print(
-            "Patient:",
-            patient.get("name")
+            "Calling predict_fusion()..."
         )
-
-        print(
-            "Patient ID:",
-            patient_id
-        )
-
-        print(
-            "Clinical length:",
-            len(clinical_text)
-        )
-
-        print(
-            "X-Ray:",
-            xray_filename
-        )
-
-        print(
-            "ECG:",
-            ecg_filename
-        )
-
-        print("=" * 70)
 
 
         # ====================================================
-        # MODEL
+        # FUSION MODEL
         # ====================================================
 
         result = predict_fusion(
@@ -369,37 +318,47 @@ async def predict(
 
 
         # ====================================================
+        # MODEL FINISHED
+        # ====================================================
+
+        print()
+        print("=" * 70)
+        print("[7/8] FUSION MODEL COMPLETED")
+        print("=" * 70)
+
+        print(
+            "Result type:",
+            type(result)
+        )
+
+        print(
+            "Result:",
+            result
+        )
+
+
+        # ====================================================
         # VALIDATION
         # ====================================================
 
-        if not isinstance(
-            result,
-            dict
-        ):
+        if not isinstance(result, dict):
 
             raise ValueError(
                 "Fusion model returned invalid result."
             )
 
-
         abnormal_probability = result.get(
             "abnormal_probability"
         )
-
 
         risk_percentage = result.get(
             "risk_percentage"
         )
 
-
         assessment = result.get(
             "assessment"
         )
 
-
-        # ====================================================
-        # PROBABILITY
-        # ====================================================
 
         if abnormal_probability is not None:
 
@@ -420,10 +379,6 @@ async def predict(
                 "Model did not return probability."
             )
 
-
-        # ====================================================
-        # NORMALIZE
-        # ====================================================
 
         if (
             abnormal_probability > 1
@@ -450,33 +405,22 @@ async def predict(
         )
 
 
-        # ====================================================
-        # ASSESSMENT
-        # ====================================================
-
-        if not isinstance(
-            assessment,
-            str
-        ) or not assessment.strip():
+        if (
+            not isinstance(
+                assessment,
+                str
+            )
+            or not assessment.strip()
+        ):
 
             assessment = (
-
                 "HIGH RISK"
-
                 if abnormal_probability >= 0.5
-
-                else
-
-                "LOW RISK"
+                else "LOW RISK"
             )
-
 
         assessment = assessment.strip()
 
-
-        # ====================================================
-        # RESULT
-        # ====================================================
 
         normalized_result = {
 
@@ -506,7 +450,6 @@ async def predict(
         prediction_id = str(
             uuid.uuid4()
         )
-
 
         prediction_data = {
 
@@ -561,18 +504,14 @@ async def predict(
         )
 
 
-        # ====================================================
-        # LOG
-        # ====================================================
-
         print()
         print("=" * 70)
-        print("PREDICTION COMPLETED")
+        print("[8/8] PREDICTION SAVED SUCCESSFULLY")
         print("=" * 70)
 
         print(
-            "Patient:",
-            patient.get("name")
+            "Prediction ID:",
+            prediction_id
         )
 
         print(
@@ -585,22 +524,8 @@ async def predict(
             assessment
         )
 
-        print(
-            "ECG:",
-            ecg_filename
-        )
-
-        print(
-            "Prediction ID:",
-            prediction_id
-        )
-
         print("=" * 70)
 
-
-        # ====================================================
-        # RESPONSE
-        # ====================================================
 
         return {
 
@@ -637,49 +562,9 @@ async def predict(
 
     except HTTPException:
 
-        # ====================================================
-        # CLEANUP X-RAY
-        # ====================================================
-
-        try:
-
-            if (
-                xray_path
-                and os.path.exists(
-                    xray_path
-                )
-            ):
-
-                os.remove(
-                    xray_path
-                )
-
-        except Exception:
-
-            pass
-
-
-        # ====================================================
-        # CLEANUP ECG
-        # ====================================================
-
-        try:
-
-            if (
-                ecg_path
-                and os.path.exists(
-                    ecg_path
-                )
-            ):
-
-                os.remove(
-                    ecg_path
-                )
-
-        except Exception:
-
-            pass
-
+        print(
+            "[HTTP ERROR]"
+        )
 
         raise
 
@@ -692,55 +577,13 @@ async def predict(
         print("=" * 70)
 
         print(
+            "ERROR:",
             repr(e)
         )
 
+        traceback.print_exc()
+
         print("=" * 70)
-
-
-        # ====================================================
-        # CLEANUP X-RAY
-        # ====================================================
-
-        try:
-
-            if (
-                xray_path
-                and os.path.exists(
-                    xray_path
-                )
-            ):
-
-                os.remove(
-                    xray_path
-                )
-
-        except Exception:
-
-            pass
-
-
-        # ====================================================
-        # CLEANUP ECG
-        # ====================================================
-
-        try:
-
-            if (
-                ecg_path
-                and os.path.exists(
-                    ecg_path
-                )
-            ):
-
-                os.remove(
-                    ecg_path
-                )
-
-        except Exception:
-
-            pass
-
 
         raise HTTPException(
 
@@ -748,3 +591,36 @@ async def predict(
 
             detail=f"Prediction failed: {str(e)}"
         )
+
+
+    finally:
+
+        # ====================================================
+        # CLEANUP
+        # ====================================================
+
+        for path in (
+            xray_path,
+            ecg_path
+        ):
+
+            try:
+
+                if (
+                    path
+                    and os.path.exists(path)
+                ):
+
+                    os.remove(path)
+
+                    print(
+                        "[CLEANUP] Removed:",
+                        path
+                    )
+
+            except Exception as cleanup_error:
+
+                print(
+                    "[CLEANUP ERROR]:",
+                    repr(cleanup_error)
+                )
