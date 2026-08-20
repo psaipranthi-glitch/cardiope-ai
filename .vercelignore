@@ -1,0 +1,14 @@
+backend/
+ml/
+data/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pth
+*.pt
+*.onnx
+*.h5
+*.pkl
+*.joblib
+node_modules/

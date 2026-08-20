@@ -9,3 +9,5 @@ dist/
 build/
 data/xray/uploads/
 data/ecg/uploads/
+.vercel
+.env*
