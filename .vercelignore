@@ -12,3 +12,5 @@ __pycache__/
 *.pkl
 *.joblib
 node_modules/
+requirements.txt
+render.yaml
