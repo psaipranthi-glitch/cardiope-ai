@@ -1,10 +1,6 @@
 import uuid
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException
-)
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.auth import get_current_user
 from backend.database import (
@@ -30,11 +26,19 @@ async def create_patient(
     current_user=Depends(get_current_user)
 ):
 
+    # --------------------------------------------------------
+    # AUTHENTICATION
+    # --------------------------------------------------------
+
     if not current_user:
         raise HTTPException(
             status_code=401,
             detail="Authentication required."
         )
+
+    # --------------------------------------------------------
+    # DOCTOR AUTHORIZATION
+    # --------------------------------------------------------
 
     if current_user.get("role") != "doctor":
         raise HTTPException(
@@ -44,7 +48,21 @@ async def create_patient(
 
     doctor_id = current_user.get("user_id")
 
+    if not doctor_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid doctor account."
+        )
+
+    # --------------------------------------------------------
+    # CREATE PATIENT ID
+    # --------------------------------------------------------
+
     patient_id = str(uuid.uuid4())
+
+    # --------------------------------------------------------
+    # PATIENT DOCUMENT
+    # --------------------------------------------------------
 
     patient_data = {
         "patient_id": patient_id,
@@ -56,7 +74,21 @@ async def create_patient(
         "phone": patient.phone
     }
 
-    patients_collection.insert_one(patient_data)
+    # --------------------------------------------------------
+    # SAVE TO MONGODB
+    # --------------------------------------------------------
+
+    result = patients_collection.insert_one(patient_data)
+
+    # IMPORTANT:
+    # PyMongo adds "_id" to the dictionary automatically.
+    # Remove it before returning the response to FastAPI.
+
+    patient_data.pop("_id", None)
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
 
     return {
         "message": "Patient created successfully",
@@ -67,7 +99,7 @@ async def create_patient(
 
 
 # ============================================================
-# GET PATIENTS
+# GET ALL PATIENTS
 # ============================================================
 
 @router.get("/")
@@ -75,11 +107,19 @@ async def get_patients(
     current_user=Depends(get_current_user)
 ):
 
+    # --------------------------------------------------------
+    # AUTHENTICATION
+    # --------------------------------------------------------
+
     if not current_user:
         raise HTTPException(
             status_code=401,
             detail="Authentication required."
         )
+
+    # --------------------------------------------------------
+    # DOCTOR AUTHORIZATION
+    # --------------------------------------------------------
 
     if current_user.get("role") != "doctor":
         raise HTTPException(
@@ -88,6 +128,10 @@ async def get_patients(
         )
 
     doctor_id = current_user.get("user_id")
+
+    # --------------------------------------------------------
+    # GET PATIENTS
+    # --------------------------------------------------------
 
     patients = list(
         patients_collection.find(
@@ -99,6 +143,10 @@ async def get_patients(
             }
         )
     )
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
 
     return {
         "patients": patients
@@ -115,11 +163,19 @@ async def get_patient(
     current_user=Depends(get_current_user)
 ):
 
+    # --------------------------------------------------------
+    # AUTHENTICATION
+    # --------------------------------------------------------
+
     if not current_user:
         raise HTTPException(
             status_code=401,
             detail="Authentication required."
         )
+
+    # --------------------------------------------------------
+    # DOCTOR AUTHORIZATION
+    # --------------------------------------------------------
 
     if current_user.get("role") != "doctor":
         raise HTTPException(
@@ -128,6 +184,10 @@ async def get_patient(
         )
 
     doctor_id = current_user.get("user_id")
+
+    # --------------------------------------------------------
+    # FIND PATIENT
+    # --------------------------------------------------------
 
     patient = patients_collection.find_one(
         {
@@ -144,6 +204,10 @@ async def get_patient(
             status_code=404,
             detail="Patient not found."
         )
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
 
     return patient
 
@@ -158,15 +222,19 @@ async def get_patient_predictions(
     current_user=Depends(get_current_user)
 ):
 
-    # ========================================================
-    # AUTH
-    # ========================================================
+    # --------------------------------------------------------
+    # AUTHENTICATION
+    # --------------------------------------------------------
 
     if not current_user:
         raise HTTPException(
             status_code=401,
             detail="Authentication required."
         )
+
+    # --------------------------------------------------------
+    # DOCTOR AUTHORIZATION
+    # --------------------------------------------------------
 
     if current_user.get("role") != "doctor":
         raise HTTPException(
@@ -176,10 +244,9 @@ async def get_patient_predictions(
 
     doctor_id = current_user.get("user_id")
 
-
-    # ========================================================
-    # VERIFY PATIENT BELONGS TO DOCTOR
-    # ========================================================
+    # --------------------------------------------------------
+    # VERIFY PATIENT
+    # --------------------------------------------------------
 
     patient = patients_collection.find_one(
         {
@@ -197,10 +264,9 @@ async def get_patient_predictions(
             detail="Patient not found."
         )
 
-
-    # ========================================================
+    # --------------------------------------------------------
     # GET PREDICTIONS
-    # ========================================================
+    # --------------------------------------------------------
 
     predictions = list(
         predictions_collection.find(
@@ -217,74 +283,13 @@ async def get_patient_predictions(
         )
     )
 
-
-    # ========================================================
+    # --------------------------------------------------------
     # RESPONSE
-    # ========================================================
+    # --------------------------------------------------------
 
     return {
         "patient_id": patient_id,
         "patient_name": patient.get("name"),
         "predictions": predictions,
         "count": len(predictions)
-    }
-# ============================================================
-# GET PATIENT PREDICTION HISTORY
-# ============================================================
-
-@router.get("/{patient_id}/predictions")
-async def get_patient_predictions(
-    patient_id: str,
-    current_user=Depends(get_current_user)
-):
-
-    if not current_user:
-
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required."
-        )
-
-    if current_user.get("role") != "doctor":
-
-        raise HTTPException(
-            status_code=403,
-            detail="Doctor authorization required."
-        )
-
-    doctor_id = current_user.get(
-        "user_id"
-    )
-
-    patient = patients_collection.find_one(
-        {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id
-        }
-    )
-
-    if not patient:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Patient not found."
-        )
-
-    predictions = list(
-        predictions_collection.find(
-            {
-                "patient_id": patient_id,
-                "doctor_id": doctor_id
-            },
-            {
-                "_id": 0
-            }
-        ).sort(
-            "created_at",
-            -1
-        )
-    )
-
-    return {
-        "predictions": predictions
     }
