@@ -21,13 +21,8 @@ from backend.routes.patient_predictions import (
 # ============================================================
 
 app = FastAPI(
-
     title="CardioPE-AI API",
-
-    description=(
-        "Multimodal Cardiac Intelligence"
-    ),
-
+    description="Multimodal Cardiac Intelligence",
     version="1.0.0"
 )
 
@@ -37,21 +32,23 @@ app = FastAPI(
 # ============================================================
 
 app.add_middleware(
-
     CORSMiddleware,
 
-allow_origins=[
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://cardiope-ai-k7xc.vercel.app",
-    "https://cardiope-ai-k7xc-ih3pds8t6-individual13.vercel.app"
-],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://cardiope-ai-k7xc.vercel.app",
+    ],
+
+    allow_origin_regex=(
+        r"https://cardiope-ai-k7xc-[a-z0-9]+-individual13\.vercel\.app"
+    ),
 
     allow_credentials=True,
 
     allow_methods=["*"],
 
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 
@@ -84,12 +81,8 @@ app.include_router(
 async def root():
 
     return {
-
-        "message":
-            "CardioPE-AI API",
-
-        "status":
-            "online"
+        "message": "CardioPE-AI API",
+        "status": "online"
     }
 
 
@@ -101,10 +94,6 @@ async def root():
 async def health():
 
     return {
-
-        "status":
-            "healthy",
-
-        "service":
-            "CardioPE-AI"
+        "status": "healthy",
+        "service": "CardioPE-AI"
     }
