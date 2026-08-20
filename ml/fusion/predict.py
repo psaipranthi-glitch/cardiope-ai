@@ -1,4 +1,5 @@
 import os
+import gc
 
 import torch
 import torch.nn as nn
@@ -8,6 +9,22 @@ from PIL import Image
 from torchvision import models, transforms
 
 from ml.fusion.model import CardioFusion
+
+
+# ============================================================
+# MEMORY / CPU SETTINGS
+# ============================================================
+
+DEVICE = torch.device("cpu")
+
+torch.set_num_threads(1)
+
+try:
+    torch.set_num_interop_threads(1)
+except RuntimeError:
+    pass
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 # ============================================================
@@ -37,15 +54,6 @@ ECG_MODEL = os.path.join(
 )
 
 NLP_MODEL = "emilyalsentzer/Bio_ClinicalBERT"
-
-
-# ============================================================
-# DEVICE
-# ============================================================
-
-DEVICE = torch.device("cpu")
-
-torch.set_num_threads(1)
 
 
 # ============================================================
@@ -118,7 +126,6 @@ class ECGCNN(nn.Module):
             )
         )
 
-
     def forward(self, x):
 
         x = self.features(x)
@@ -140,18 +147,24 @@ def load_fusion():
 
         print("Loading CardioFusion...")
 
-        fusion = CardioFusion()
+        model = CardioFusion()
 
-        fusion.load_state_dict(
-            torch.load(
-                FUSION_MODEL,
-                map_location=DEVICE,
-                weights_only=True
-            )
+        state = torch.load(
+            FUSION_MODEL,
+            map_location=DEVICE,
+            weights_only=True
         )
 
-        fusion.to(DEVICE)
-        fusion.eval()
+        model.load_state_dict(state)
+
+        del state
+
+        model.to(DEVICE)
+        model.eval()
+
+        fusion = model
+
+        gc.collect()
 
         print("CardioFusion loaded!")
 
@@ -170,18 +183,24 @@ def load_ecg_model():
 
         print("Loading ECG CNN...")
 
-        ecg_model = ECGCNN()
+        model = ECGCNN()
 
-        ecg_model.load_state_dict(
-            torch.load(
-                ECG_MODEL,
-                map_location=DEVICE,
-                weights_only=True
-            )
+        state = torch.load(
+            ECG_MODEL,
+            map_location=DEVICE,
+            weights_only=True
         )
 
-        ecg_model.to(DEVICE)
-        ecg_model.eval()
+        model.load_state_dict(state)
+
+        del state
+
+        model.to(DEVICE)
+        model.eval()
+
+        ecg_model = model
+
+        gc.collect()
 
         print("ECG CNN loaded!")
 
@@ -197,20 +216,29 @@ def load_nlp_model():
     global tokenizer
     global nlp_model
 
-    if tokenizer is None or nlp_model is None:
+    if tokenizer is None:
 
-        print("Loading Clinical NLP...")
+        print("Loading Clinical NLP tokenizer...")
 
         tokenizer = AutoTokenizer.from_pretrained(
             NLP_MODEL
         )
 
-        nlp_model = AutoModel.from_pretrained(
+    if nlp_model is None:
+
+        print("Loading Clinical NLP model...")
+
+        model = AutoModel.from_pretrained(
             NLP_MODEL
         )
 
-        nlp_model.to(DEVICE)
-        nlp_model.eval()
+        model.to(DEVICE)
+
+        model.eval()
+
+        nlp_model = model
+
+        gc.collect()
 
         print("Clinical NLP loaded!")
 
@@ -229,16 +257,19 @@ def load_cv_model():
 
         print("Loading CV model...")
 
-        weights = models.ResNet18_Weights.DEFAULT
-
-        cv_model = models.resnet18(
-            weights=weights
+        model = models.resnet18(
+            weights=models.ResNet18_Weights.DEFAULT
         )
 
-        cv_model.fc = nn.Identity()
+        model.fc = nn.Identity()
 
-        cv_model.to(DEVICE)
-        cv_model.eval()
+        model.to(DEVICE)
+
+        model.eval()
+
+        cv_model = model
+
+        gc.collect()
 
         print("CV model loaded!")
 
@@ -282,6 +313,9 @@ def get_nlp_features(text: str):
 
     tokenizer, nlp_model = load_nlp_model()
 
+    if not text:
+        text = "No clinical information provided."
+
     inputs = tokenizer(
 
         text,
@@ -292,15 +326,10 @@ def get_nlp_features(text: str):
 
         padding=True,
 
-        max_length=256
+        max_length=128
     )
 
-    inputs = {
-        key: value.to(DEVICE)
-        for key, value in inputs.items()
-    }
-
-    with torch.no_grad():
+    with torch.inference_mode():
 
         outputs = nlp_model(
             **inputs
@@ -309,7 +338,11 @@ def get_nlp_features(text: str):
         features = (
             outputs
             .last_hidden_state[:, 0, :]
+            .detach()
         )
+
+    del inputs
+    del outputs
 
     return features
 
@@ -318,48 +351,46 @@ def get_nlp_features(text: str):
 # X-RAY FEATURES
 # ============================================================
 
-def get_cv_features(
-    image_path: str
-):
+def get_cv_features(image_path: str):
 
-    cv_model = load_cv_model()
+    if not image_path:
 
-    if not os.path.exists(
-        image_path
-    ):
+        raise ValueError(
+            "X-ray image is required."
+        )
+
+    if not os.path.exists(image_path):
 
         raise FileNotFoundError(
             f"X-ray image not found: {image_path}"
         )
 
+    model = load_cv_model()
+
     image = Image.open(
         image_path
     ).convert("RGB")
 
-    image = transform(
-        image
-    )
+    image = transform(image)
 
     image = image.unsqueeze(0)
 
-    image = image.to(DEVICE)
+    with torch.inference_mode():
 
-    with torch.no_grad():
-
-        features = cv_model(
+        features = model(
             image
-        )
+        ).detach()
+
+    del image
 
     return features
 
 
 # ============================================================
-# ECG IMAGE FEATURES
+# PREPARE ECG SIGNAL
 # ============================================================
 
-def get_ecg_features(
-    ecg_path: str
-):
+def prepare_ecg_signal(ecg_path: str):
 
     if not ecg_path:
 
@@ -367,9 +398,7 @@ def get_ecg_features(
             "ECG file is required."
         )
 
-    if not os.path.exists(
-        ecg_path
-    ):
+    if not os.path.exists(ecg_path):
 
         raise FileNotFoundError(
             f"ECG file not found: {ecg_path}"
@@ -379,48 +408,7 @@ def get_ecg_features(
         ecg_path
     )[1].lower()
 
-
-    # ========================================================
-    # IMAGE ECG
-    # ========================================================
-
-    if extension in {
-        ".jpg",
-        ".jpeg",
-        ".png"
-    }:
-
-        image = Image.open(
-            ecg_path
-        ).convert("L")
-
-        image = image.resize(
-            (1000, 256)
-        )
-
-        image_tensor = transforms.ToTensor()(
-            image
-        )
-
-        image_tensor = (
-            image_tensor.mean(
-                dim=0,
-                keepdim=True
-            )
-        )
-
-        signal = image_tensor.mean(
-            dim=1
-        )
-
-        signal = signal.squeeze(0)
-
-
-    # ========================================================
-    # PDF ECG
-    # ========================================================
-
-    elif extension == ".pdf":
+    if extension == ".pdf":
 
         raise ValueError(
             "PDF ECG input is stored successfully, "
@@ -428,98 +416,16 @@ def get_ecg_features(
             "Please upload the ECG as JPG or PNG."
         )
 
-
-    else:
-
-        raise ValueError(
-            "Unsupported ECG format."
-        )
-
-
-    # ========================================================
-    # NORMALIZE SIGNAL
-    # ========================================================
-
-    signal = signal.float()
-
-    signal = (
-        signal - signal.mean()
-    ) / (
-        signal.std() + 1e-8
-    )
-
-
-    # ========================================================
-    # RESIZE
-    # ========================================================
-
-    signal = (
-        signal
-        .unsqueeze(0)
-        .unsqueeze(0)
-    )
-
-    signal = torch.nn.functional.interpolate(
-        signal,
-        size=1000,
-        mode="linear",
-        align_corners=False
-    )
-
-    signal = signal.to(DEVICE)
-
-
-    # ========================================================
-    # ECG CNN FEATURES
-    # ========================================================
-
-    ecg_model = load_ecg_model()
-
-    with torch.no_grad():
-
-        features = ecg_model.features(
-            signal
-        )
-
-        features = features.squeeze(-1)
-
-    return features
-
-
-# ============================================================
-# ECG MODEL PREDICTION
-# ============================================================
-
-def predict_ecg(
-    ecg_path: str
-):
-
-    if not ecg_path:
-
-        return None
-
-
-    extension = os.path.splitext(
-        ecg_path
-    )[1].lower()
-
-
-    if extension == ".pdf":
-
-        return None
-
-
     if extension not in {
         ".jpg",
         ".jpeg",
         ".png"
     }:
 
-        return None
-
-
-    ecg_model = load_ecg_model()
-
+        raise ValueError(
+            "Unsupported ECG format. "
+            "Please upload JPG or PNG."
+        )
 
     image = Image.open(
         ecg_path
@@ -529,9 +435,8 @@ def predict_ecg(
         (1000, 256)
     )
 
-    image_tensor = transforms.ToTensor()(
-        image
-    )
+    image_tensor = transforms.ToTensor(
+    )(image)
 
     signal = image_tensor.mean(
         dim=0
@@ -556,17 +461,80 @@ def predict_ecg(
     )
 
     signal = torch.nn.functional.interpolate(
+
         signal,
+
         size=1000,
+
         mode="linear",
+
         align_corners=False
     )
 
-    signal = signal.to(DEVICE)
+    return signal
 
-    with torch.no_grad():
 
-        output = ecg_model(
+# ============================================================
+# ECG FEATURES
+# ============================================================
+
+def get_ecg_features(ecg_path: str):
+
+    signal = prepare_ecg_signal(
+        ecg_path
+    )
+
+    model = load_ecg_model()
+
+    with torch.inference_mode():
+
+        features = model.features(
+            signal
+        )
+
+        features = (
+            features
+            .squeeze(-1)
+            .detach()
+        )
+
+    del signal
+
+    return features
+
+
+# ============================================================
+# ECG PREDICTION
+# ============================================================
+
+def predict_ecg(ecg_path: str):
+
+    if not ecg_path:
+        return None
+
+    extension = os.path.splitext(
+        ecg_path
+    )[1].lower()
+
+    if extension == ".pdf":
+        return None
+
+    if extension not in {
+        ".jpg",
+        ".jpeg",
+        ".png"
+    }:
+        return None
+
+    signal = prepare_ecg_signal(
+        ecg_path
+    )
+
+    model = load_ecg_model()
+
+    with torch.inference_mode():
+
+        output = model(
             signal
         )
 
@@ -578,6 +546,10 @@ def predict_ecg(
         abnormal_probability = (
             probabilities[0, 1].item()
         )
+
+    del signal
+    del output
+    del probabilities
 
     return {
 
@@ -605,173 +577,209 @@ def predict_fusion(
     ecg_path: str
 ):
 
-    # ========================================================
-    # NLP
-    # ========================================================
+    nlp_features = None
+    cv_features = None
+    ecg_features = None
+    output = None
+    probabilities = None
 
-    print()
-    print("=" * 65)
-    print("GENERATING CLINICAL NLP FEATURES")
-    print("=" * 65)
+    try:
 
-    nlp_features = get_nlp_features(
-        clinical_text
-    )
+        # ====================================================
+        # NLP
+        # ====================================================
 
-    print(
-        "NLP features:",
-        nlp_features.shape
-    )
+        print()
+        print("=" * 65)
+        print("GENERATING CLINICAL NLP FEATURES")
+        print("=" * 65)
 
-
-    # ========================================================
-    # X-RAY
-    # ========================================================
-
-    print()
-    print("=" * 65)
-    print("GENERATING X-RAY FEATURES")
-    print("=" * 65)
-
-    cv_features = get_cv_features(
-        image_path
-    )
-
-    print(
-        "CV features:",
-        cv_features.shape
-    )
-
-
-    # ========================================================
-    # ECG
-    # ========================================================
-
-    print()
-    print("=" * 65)
-    print("GENERATING ECG FEATURES")
-    print("=" * 65)
-
-    ecg_features = get_ecg_features(
-        ecg_path
-    )
-
-    print(
-        "ECG features:",
-        ecg_features.shape
-    )
-
-
-    # ========================================================
-    # ECG PREDICTION
-    # ========================================================
-
-    ecg_result = predict_ecg(
-        ecg_path
-    )
-
-
-    # ========================================================
-    # FUSION
-    # ========================================================
-
-    print()
-    print("=" * 65)
-    print("RUNNING CARDIOFUSION")
-    print("=" * 65)
-
-    fusion = load_fusion()
-
-    with torch.no_grad():
-
-        output = fusion(
-
-            ecg_features,
-
-            nlp_features,
-
-            cv_features
+        nlp_features = get_nlp_features(
+            clinical_text
         )
-
-        probabilities = torch.softmax(
-            output,
-            dim=1
-        )
-
-        abnormal_probability = (
-            probabilities[0, 1].item()
-        )
-
-
-    # ========================================================
-    # ASSESSMENT
-    # ========================================================
-
-    assessment = (
-
-        "HIGH RISK"
-
-        if abnormal_probability >= 0.5
-
-        else
-
-        "LOW RISK"
-    )
-
-
-    # ========================================================
-    # RESULT
-    # ========================================================
-
-    result = {
-
-        "abnormal_probability":
-            round(
-                abnormal_probability,
-                4
-            ),
-
-        "risk_percentage":
-            round(
-                abnormal_probability * 100,
-                2
-            ),
-
-        "assessment":
-            assessment,
-
-        "ecg_analysis":
-            ecg_result
-    }
-
-
-    # ========================================================
-    # LOG
-    # ========================================================
-
-    print()
-    print("=" * 65)
-    print("CARDIOPE-AI RESULT")
-    print("=" * 65)
-
-    print(
-        "Final Risk:",
-        f"{result['risk_percentage']:.2f}%"
-    )
-
-    print(
-        "Assessment:",
-        result["assessment"]
-    )
-
-    if ecg_result:
 
         print(
-            "ECG Risk:",
-            f"{ecg_result['risk_percentage']:.2f}%"
+            "NLP features:",
+            nlp_features.shape
         )
 
-    print("=" * 65)
+
+        # ====================================================
+        # X-RAY
+        # ====================================================
+
+        print()
+        print("=" * 65)
+        print("GENERATING X-RAY FEATURES")
+        print("=" * 65)
+
+        cv_features = get_cv_features(
+            image_path
+        )
+
+        print(
+            "CV features:",
+            cv_features.shape
+        )
 
 
-    return result
+        # ====================================================
+        # ECG
+        # ====================================================
+
+        print()
+        print("=" * 65)
+        print("GENERATING ECG FEATURES")
+        print("=" * 65)
+
+        ecg_features = get_ecg_features(
+            ecg_path
+        )
+
+        print(
+            "ECG features:",
+            ecg_features.shape
+        )
+
+
+        # ====================================================
+        # ECG PREDICTION
+        # ====================================================
+
+        print()
+        print("=" * 65)
+        print("RUNNING ECG PREDICTION")
+        print("=" * 65)
+
+        ecg_result = predict_ecg(
+            ecg_path
+        )
+
+
+        # ====================================================
+        # CARDIOFUSION
+        # ====================================================
+
+        print()
+        print("=" * 65)
+        print("RUNNING CARDIOFUSION")
+        print("=" * 65)
+
+        fusion_model = load_fusion()
+
+        with torch.inference_mode():
+
+            output = fusion_model(
+
+                ecg_features,
+
+                nlp_features,
+
+                cv_features
+            )
+
+            probabilities = torch.softmax(
+                output,
+                dim=1
+            )
+
+            abnormal_probability = (
+                probabilities[0, 1].item()
+            )
+
+
+        # ====================================================
+        # ASSESSMENT
+        # ====================================================
+
+        assessment = (
+
+            "HIGH RISK"
+
+            if abnormal_probability >= 0.5
+
+            else
+
+            "LOW RISK"
+        )
+
+
+        # ====================================================
+        # RESULT
+        # ====================================================
+
+        result = {
+
+            "abnormal_probability":
+                round(
+                    abnormal_probability,
+                    4
+                ),
+
+            "risk_percentage":
+                round(
+                    abnormal_probability * 100,
+                    2
+                ),
+
+            "assessment":
+                assessment,
+
+            "ecg_analysis":
+                ecg_result
+        }
+
+
+        # ====================================================
+        # LOG
+        # ====================================================
+
+        print()
+        print("=" * 65)
+        print("CARDIOPE-AI RESULT")
+        print("=" * 65)
+
+        print(
+            "Final Risk:",
+            f"{result['risk_percentage']:.2f}%"
+        )
+
+        print(
+            "Assessment:",
+            result["assessment"]
+        )
+
+        if ecg_result:
+
+            print(
+                "ECG Risk:",
+                f"{ecg_result['risk_percentage']:.2f}%"
+            )
+
+        print("=" * 65)
+
+        return result
+
+
+    finally:
+
+        # ====================================================
+        # RELEASE TEMPORARY TENSORS
+        # ====================================================
+
+        if nlp_features is not None:
+            del nlp_features
+
+        if cv_features is not None:
+            del cv_features
+
+        if ecg_features is not None:
+            del ecg_features
+
+        if output is not None:
+            del output
+
+        if probabilities is not None:
+            del probabilities
+
+        gc.collect()
