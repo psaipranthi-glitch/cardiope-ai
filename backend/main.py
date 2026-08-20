@@ -2,15 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.auth import router as auth_router
-
-from backend.routes.patients import (
-    router as patients_router
-)
-
-from backend.routes.prediction import (
-    router as prediction_router
-)
-
+from backend.routes.patients import router as patients_router
+from backend.routes.prediction import router as prediction_router
 from backend.routes.patient_predictions import (
     router as patient_predictions_router
 )
@@ -34,17 +27,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
 
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://cardiope-ai-k7xc.vercel.app",
-    ],
+    allow_origins=["*"],
 
-    allow_origin_regex=(
-        r"https://cardiope-ai-k7xc-[a-z0-9]+-individual13\.vercel\.app"
-    ),
-
-    allow_credentials=True,
+    allow_credentials=False,
 
     allow_methods=["*"],
 
