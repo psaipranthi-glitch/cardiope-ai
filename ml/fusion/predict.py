@@ -40,6 +40,26 @@ NLP_MODEL = "emilyalsentzer/Bio_ClinicalBERT"
 
 
 # ============================================================
+# DEVICE
+# ============================================================
+
+DEVICE = torch.device("cpu")
+
+torch.set_num_threads(1)
+
+
+# ============================================================
+# LAZY MODEL REFERENCES
+# ============================================================
+
+fusion = None
+ecg_model = None
+tokenizer = None
+nlp_model = None
+cv_model = None
+
+
+# ============================================================
 # ECG CNN
 # ============================================================
 
@@ -112,80 +132,117 @@ class ECGCNN(nn.Module):
 # LOAD CARDIOFUSION
 # ============================================================
 
-print("Loading CardioFusion...")
+def load_fusion():
 
-fusion = CardioFusion()
+    global fusion
 
-fusion.load_state_dict(
-    torch.load(
-        FUSION_MODEL,
-        map_location="cpu",
-        weights_only=True
-    )
-)
+    if fusion is None:
 
-fusion.eval()
+        print("Loading CardioFusion...")
 
-print("CardioFusion loaded!")
+        fusion = CardioFusion()
+
+        fusion.load_state_dict(
+            torch.load(
+                FUSION_MODEL,
+                map_location=DEVICE,
+                weights_only=True
+            )
+        )
+
+        fusion.to(DEVICE)
+        fusion.eval()
+
+        print("CardioFusion loaded!")
+
+    return fusion
 
 
 # ============================================================
 # LOAD ECG MODEL
 # ============================================================
 
-print("\nLoading ECG CNN...")
+def load_ecg_model():
 
-ecg_model = ECGCNN()
+    global ecg_model
 
-ecg_model.load_state_dict(
-    torch.load(
-        ECG_MODEL,
-        map_location="cpu",
-        weights_only=True
-    )
-)
+    if ecg_model is None:
 
-ecg_model.eval()
+        print("Loading ECG CNN...")
 
-print("ECG CNN loaded!")
+        ecg_model = ECGCNN()
+
+        ecg_model.load_state_dict(
+            torch.load(
+                ECG_MODEL,
+                map_location=DEVICE,
+                weights_only=True
+            )
+        )
+
+        ecg_model.to(DEVICE)
+        ecg_model.eval()
+
+        print("ECG CNN loaded!")
+
+    return ecg_model
 
 
 # ============================================================
 # LOAD CLINICAL NLP
 # ============================================================
 
-print("\nLoading Clinical NLP...")
+def load_nlp_model():
 
-tokenizer = AutoTokenizer.from_pretrained(
-    NLP_MODEL
-)
+    global tokenizer
+    global nlp_model
 
-nlp_model = AutoModel.from_pretrained(
-    NLP_MODEL
-)
+    if tokenizer is None or nlp_model is None:
 
-nlp_model.eval()
+        print("Loading Clinical NLP...")
 
-print("Clinical NLP loaded!")
+        tokenizer = AutoTokenizer.from_pretrained(
+            NLP_MODEL
+        )
+
+        nlp_model = AutoModel.from_pretrained(
+            NLP_MODEL
+        )
+
+        nlp_model.to(DEVICE)
+        nlp_model.eval()
+
+        print("Clinical NLP loaded!")
+
+    return tokenizer, nlp_model
 
 
 # ============================================================
 # LOAD COMPUTER VISION MODEL
 # ============================================================
 
-print("\nLoading CV model...")
+def load_cv_model():
 
-weights = models.ResNet18_Weights.DEFAULT
+    global cv_model
 
-cv_model = models.resnet18(
-    weights=weights
-)
+    if cv_model is None:
 
-cv_model.fc = nn.Identity()
+        print("Loading CV model...")
 
-cv_model.eval()
+        weights = models.ResNet18_Weights.DEFAULT
 
-print("CV model loaded!")
+        cv_model = models.resnet18(
+            weights=weights
+        )
+
+        cv_model.fc = nn.Identity()
+
+        cv_model.to(DEVICE)
+        cv_model.eval()
+
+        print("CV model loaded!")
+
+    return cv_model
 
 
 # ============================================================
@@ -223,6 +280,8 @@ transform = transforms.Compose([
 
 def get_nlp_features(text: str):
 
+    tokenizer, nlp_model = load_nlp_model()
+
     inputs = tokenizer(
 
         text,
@@ -235,6 +294,11 @@ def get_nlp_features(text: str):
 
         max_length=256
     )
+
+    inputs = {
+        key: value.to(DEVICE)
+        for key, value in inputs.items()
+    }
 
     with torch.no_grad():
 
@@ -258,6 +322,8 @@ def get_cv_features(
     image_path: str
 ):
 
+    cv_model = load_cv_model()
+
     if not os.path.exists(
         image_path
     ):
@@ -275,6 +341,8 @@ def get_cv_features(
     )
 
     image = image.unsqueeze(0)
+
+    image = image.to(DEVICE)
 
     with torch.no_grad():
 
@@ -382,10 +450,14 @@ def get_ecg_features(
 
 
     # ========================================================
-    # RESIZE TO ECG MODEL LENGTH
+    # RESIZE
     # ========================================================
 
-    signal = signal.unsqueeze(0).unsqueeze(0)
+    signal = (
+        signal
+        .unsqueeze(0)
+        .unsqueeze(0)
+    )
 
     signal = torch.nn.functional.interpolate(
         signal,
@@ -394,10 +466,14 @@ def get_ecg_features(
         align_corners=False
     )
 
+    signal = signal.to(DEVICE)
+
 
     # ========================================================
     # ECG CNN FEATURES
     # ========================================================
+
+    ecg_model = load_ecg_model()
 
     with torch.no_grad():
 
@@ -406,7 +482,6 @@ def get_ecg_features(
         )
 
         features = features.squeeze(-1)
-
 
     return features
 
@@ -443,6 +518,9 @@ def predict_ecg(
         return None
 
 
+    ecg_model = load_ecg_model()
+
+
     image = Image.open(
         ecg_path
     ).convert("L")
@@ -471,10 +549,10 @@ def predict_ecg(
         signal.std() + 1e-8
     )
 
-    signal = signal.unsqueeze(
-        0
-    ).unsqueeze(
-        0
+    signal = (
+        signal
+        .unsqueeze(0)
+        .unsqueeze(0)
     )
 
     signal = torch.nn.functional.interpolate(
@@ -483,6 +561,8 @@ def predict_ecg(
         mode="linear",
         align_corners=False
     )
+
+    signal = signal.to(DEVICE)
 
     with torch.no_grad():
 
@@ -500,6 +580,7 @@ def predict_ecg(
         )
 
     return {
+
         "abnormal_probability":
             round(
                 abnormal_probability,
@@ -523,6 +604,10 @@ def predict_fusion(
     image_path: str,
     ecg_path: str
 ):
+
+    # ========================================================
+    # NLP
+    # ========================================================
 
     print()
     print("=" * 65)
@@ -595,6 +680,8 @@ def predict_fusion(
     print("RUNNING CARDIOFUSION")
     print("=" * 65)
 
+    fusion = load_fusion()
+
     with torch.no_grad():
 
         output = fusion(
@@ -631,6 +718,10 @@ def predict_fusion(
         "LOW RISK"
     )
 
+
+    # ========================================================
+    # RESULT
+    # ========================================================
 
     result = {
 
