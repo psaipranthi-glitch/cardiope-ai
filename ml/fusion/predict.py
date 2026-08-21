@@ -53,6 +53,18 @@ FUSION_MODEL = os.path.join(
 
 
 # ============================================================
+# TRAINING CONFIGURATION
+# ============================================================
+
+ECG_SIGNAL_LENGTH = 1800
+
+ECG_THRESHOLD = 0.79
+
+ECG_WEIGHT = 0.80
+FUSION_WEIGHT = 0.20
+
+
+# ============================================================
 # GLOBAL MODELS
 # ============================================================
 
@@ -157,6 +169,7 @@ def load_ecg_model():
         del state
 
         model.to(DEVICE)
+
         model.eval()
 
         ecg_model = model
@@ -193,6 +206,7 @@ def load_fusion():
         del state
 
         model.to(DEVICE)
+
         model.eval()
 
         fusion = model
@@ -219,6 +233,7 @@ def cleanup_memory():
     gc.collect()
 
     if torch.cuda.is_available():
+
         torch.cuda.empty_cache()
 
 
@@ -229,6 +244,7 @@ def cleanup_memory():
 def get_nlp_features(text: str):
 
     if not text:
+
         text = "No clinical information provided."
 
     text = text.lower().strip()
@@ -241,6 +257,7 @@ def get_nlp_features(text: str):
     words = text.split()
 
     if not words:
+
         words = ["unknown"]
 
     for word in words:
@@ -271,6 +288,7 @@ def get_nlp_features(text: str):
     norm = torch.norm(features)
 
     if norm > 0:
+
         features = features / norm
 
     return features.unsqueeze(0)
@@ -283,11 +301,13 @@ def get_nlp_features(text: str):
 def get_cv_features(image_path: str):
 
     if not image_path:
+
         raise ValueError(
             "X-ray image is required."
         )
 
     if not os.path.exists(image_path):
+
         raise FileNotFoundError(
             f"X-ray image not found: {image_path}"
         )
@@ -311,6 +331,7 @@ def get_cv_features(image_path: str):
     )[:, :512]
 
     mean = features.mean()
+
     std = features.std()
 
     features = (
@@ -319,21 +340,26 @@ def get_cv_features(image_path: str):
         std + 1e-8
     )
 
+    del pixels
+    del image
+
     return features
 
 
 # ============================================================
-# ECG IMAGE → 1D SIGNAL
+# ECG IMAGE -> 1800 POINT SIGNAL
 # ============================================================
 
 def prepare_ecg_signal(ecg_path: str):
 
     if not ecg_path:
+
         raise ValueError(
             "ECG file is required."
         )
 
     if not os.path.exists(ecg_path):
+
         raise FileNotFoundError(
             f"ECG image not found: {ecg_path}"
         )
@@ -353,26 +379,48 @@ def prepare_ecg_signal(ecg_path: str):
             "Please upload JPG or PNG."
         )
 
+
+    print(
+        ">>> ECG preprocessing:"
+        f" resizing to {ECG_SIGNAL_LENGTH} points"
+    )
+
+
     image = Image.open(
         ecg_path
     ).convert("L")
 
+
+    # IMPORTANT:
+    # The training dataset contains 1800-point ECG signals.
+    #
+    # Therefore inference must also produce 1800 points.
+
     image = image.resize(
-        (1000, 256)
+        (
+            ECG_SIGNAL_LENGTH,
+            256
+        )
     )
+
 
     image_tensor = torch.tensor(
         list(image.getdata()),
         dtype=torch.float32
     ).reshape(
         256,
-        1000
+        ECG_SIGNAL_LENGTH
     ) / 255.0
 
-    # Average vertically to obtain a 1D waveform representation.
+
+    # Convert ECG image into a 1D waveform.
+
     signal = image_tensor.mean(
         dim=0
     )
+
+
+    # Standardize exactly as a numerical signal.
 
     signal = (
         signal - signal.mean()
@@ -380,11 +428,13 @@ def prepare_ecg_signal(ecg_path: str):
         signal.std() + 1e-8
     )
 
+
     signal = (
         signal
         .unsqueeze(0)
         .unsqueeze(0)
     )
+
 
     del image_tensor
     del image
@@ -405,6 +455,7 @@ def get_ecg_result(ecg_path: str):
     )
 
     model = load_ecg_model()
+
 
     with torch.inference_mode():
 
@@ -432,6 +483,26 @@ def get_ecg_result(ecg_path: str):
             .detach()
         )
 
+
+    # IMPORTANT:
+    # This threshold came from ECG model evaluation.
+    #
+    # Do not use 0.40 or 0.50 here.
+
+    ecg_positive = (
+        abnormal_probability >= ECG_THRESHOLD
+    )
+
+
+    if ecg_positive:
+
+        ecg_assessment = "ABNORMAL ECG"
+
+    else:
+
+        ecg_assessment = "NORMAL / LOWER-RISK ECG"
+
+
     result = {
 
         "abnormal_probability":
@@ -444,13 +515,45 @@ def get_ecg_result(ecg_path: str):
             round(
                 abnormal_probability * 100,
                 2
-            )
+            ),
+
+        "threshold":
+            ECG_THRESHOLD,
+
+        "prediction":
+            (
+                1
+                if ecg_positive
+                else
+                0
+            ),
+
+        "assessment":
+            ecg_assessment
     }
+
+
+    print(
+        ">>> ECG probability:",
+        f"{abnormal_probability * 100:.2f}%"
+    )
+
+    print(
+        ">>> ECG threshold:",
+        f"{ECG_THRESHOLD * 100:.0f}%"
+    )
+
+    print(
+        ">>> ECG assessment:",
+        ecg_assessment
+    )
+
 
     del signal
     del feature_map
     del logits
     del probabilities
+
 
     ecg_model = None
 
@@ -458,11 +561,12 @@ def get_ecg_result(ecg_path: str):
 
     print(">>> ECG CNN released")
 
+
     return ecg_features, result
 
 
 # ============================================================
-# ECG-FIRST MULTIMODAL PREDICTION
+# FINAL MULTIMODAL PREDICTION
 # ============================================================
 
 def predict_fusion(
@@ -479,15 +583,17 @@ def predict_fusion(
 
     try:
 
-        print("=" * 65)
+        print()
+        print("=" * 70)
         print("CARDIOPE-AI ECG-FIRST MULTIMODAL INFERENCE")
-        print("=" * 65)
+        print("=" * 70)
 
 
         # ====================================================
         # 1. CLINICAL
         # ====================================================
 
+        print()
         print(">>> STEP 1/4: CLINICAL")
 
         nlp_features = get_nlp_features(
@@ -504,6 +610,7 @@ def predict_fusion(
         # 2. X-RAY
         # ====================================================
 
+        print()
         print(">>> STEP 2/4: X-RAY")
 
         cv_features = get_cv_features(
@@ -520,6 +627,7 @@ def predict_fusion(
         # 3. ECG
         # ====================================================
 
+        print()
         print(">>> STEP 3/4: ECG")
 
         ecg_features, ecg_result = get_ecg_result(
@@ -532,45 +640,42 @@ def predict_fusion(
             ]
         )
 
-        print(
-            ">>> ECG RISK:",
-            f"{ecg_probability * 100:.2f}%"
-        )
-
 
         # ====================================================
-        # VALIDATE FEATURES
+        # VALIDATION
         # ====================================================
 
         if ecg_features.shape[1] != 128:
 
             raise ValueError(
-                f"Invalid ECG feature size: "
+                "Invalid ECG feature size: "
                 f"{ecg_features.shape}"
             )
 
         if nlp_features.shape[1] != 768:
 
             raise ValueError(
-                f"Invalid NLP feature size: "
+                "Invalid NLP feature size: "
                 f"{nlp_features.shape}"
             )
 
         if cv_features.shape[1] != 512:
 
             raise ValueError(
-                f"Invalid CV feature size: "
+                "Invalid CV feature size: "
                 f"{cv_features.shape}"
             )
 
 
         # ====================================================
-        # 4. FUSION
+        # 4. FUSION SUPPORT
         # ====================================================
 
-        print(">>> STEP 4/4: MULTIMODAL SUPPORT")
+        print()
+        print(">>> STEP 4/4: CARDIOFUSION")
 
         fusion_model = load_fusion()
+
 
         with torch.inference_mode():
 
@@ -591,41 +696,50 @@ def predict_fusion(
 
 
         print(
-            ">>> FUSION RISK:",
+            ">>> ECG RISK:",
+            f"{ecg_probability * 100:.2f}%"
+        )
+
+        print(
+            ">>> FUSION SUPPORT:",
             f"{fusion_probability * 100:.2f}%"
         )
 
 
         # ====================================================
-        # ECG-FIRST DECISION
-        # ====================================================
-        #
-        # ECG receives 80% weight.
-        # Fusion receives only 20%.
-        #
-        # This prevents the questionable multimodal
-        # representation from overriding the ECG model.
+        # ECG-FIRST FINAL SCORE
         # ====================================================
 
         final_probability = (
 
-            0.80 * ecg_probability
+            ECG_WEIGHT * ecg_probability
 
             +
 
-            0.20 * fusion_probability
+            FUSION_WEIGHT * fusion_probability
         )
 
 
         # ====================================================
-        # ASSESSMENT
+        # IMPORTANT DECISION LOGIC
+        # ====================================================
+        #
+        # ECG is the primary modality.
+        #
+        # If ECG crosses its validated threshold,
+        # we do NOT allow the fusion model to downgrade
+        # the patient to LOW RISK.
+        #
+        # This is especially important because the current
+        # fusion training data repeats one NLP/X-ray sample
+        # across all ECG records.
         # ====================================================
 
-        if final_probability >= 0.70:
+        if ecg_probability >= ECG_THRESHOLD:
 
             assessment = "HIGH RISK"
 
-        elif final_probability >= 0.40:
+        elif final_probability >= 0.50:
 
             assessment = "MODERATE RISK"
 
@@ -660,23 +774,33 @@ def predict_fusion(
         }
 
 
-        print("=" * 65)
+        # ====================================================
+        # LOG
+        # ====================================================
+
+        print()
+        print("=" * 70)
         print("CARDIOPE-AI RESULT")
-        print("=" * 65)
+        print("=" * 70)
 
         print(
-            "ECG Risk:",
+            "ECG Probability:",
             f"{ecg_probability * 100:.2f}%"
         )
 
         print(
-            "Fusion Risk:",
+            "Fusion Support:",
             f"{fusion_probability * 100:.2f}%"
         )
 
         print(
-            "Final Risk:",
+            "Final Probability:",
             f"{final_probability * 100:.2f}%"
+        )
+
+        print(
+            "ECG Threshold:",
+            f"{ECG_THRESHOLD * 100:.0f}%"
         )
 
         print(
@@ -684,7 +808,7 @@ def predict_fusion(
             assessment
         )
 
-        print("=" * 65)
+        print("=" * 70)
 
 
         return result
@@ -693,19 +817,25 @@ def predict_fusion(
     finally:
 
         if nlp_features is not None:
+
             del nlp_features
 
         if cv_features is not None:
+
             del cv_features
 
         if ecg_features is not None:
+
             del ecg_features
 
         if output is not None:
+
             del output
 
         if probabilities is not None:
+
             del probabilities
+
 
         cleanup_memory()
 
