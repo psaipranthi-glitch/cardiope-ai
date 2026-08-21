@@ -60,18 +60,41 @@ NLP_MODEL = "emilyalsentzer/Bio_ClinicalBERT"
 
 
 # ============================================================
-# MODEL REFERENCES
+# GLOBAL MODELS
+#
+# IMPORTANT:
+# Only ONE heavy encoder is kept in memory at a time.
 # ============================================================
 
+ecg_model = None
+tokenizer = None
+nlp_model = None
+cv_model = None
 fusion = None
 
-ecg_model = None
 
-tokenizer = None
+# ============================================================
+# MEMORY CLEANUP
+# ============================================================
 
-nlp_model = None
+def cleanup_memory():
 
-cv_model = None
+    global ecg_model
+    global tokenizer
+    global nlp_model
+    global cv_model
+    global fusion
+
+    ecg_model = None
+    tokenizer = None
+    nlp_model = None
+    cv_model = None
+    fusion = None
+
+    gc.collect()
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 # ============================================================
@@ -99,7 +122,6 @@ class ECGCNN(nn.Module):
 
             nn.MaxPool1d(2),
 
-
             nn.Conv1d(
                 32,
                 64,
@@ -112,7 +134,6 @@ class ECGCNN(nn.Module):
             nn.ReLU(),
 
             nn.MaxPool1d(2),
-
 
             nn.Conv1d(
                 64,
@@ -127,7 +148,6 @@ class ECGCNN(nn.Module):
 
             nn.AdaptiveAvgPool1d(1)
         )
-
 
         self.classifier = nn.Sequential(
 
@@ -152,44 +172,7 @@ class ECGCNN(nn.Module):
 
 
 # ============================================================
-# LOAD CARDIOFUSION
-# ============================================================
-
-def load_fusion():
-
-    global fusion
-
-    if fusion is None:
-
-        print("Loading CardioFusion...")
-
-        model = CardioFusion()
-
-        state = torch.load(
-            FUSION_MODEL,
-            map_location=DEVICE,
-            weights_only=True
-        )
-
-        model.load_state_dict(state)
-
-        del state
-
-        model.to(DEVICE)
-
-        model.eval()
-
-        fusion = model
-
-        gc.collect()
-
-        print("CardioFusion loaded.")
-
-    return fusion
-
-
-# ============================================================
-# LOAD ECG MODEL
+# LOAD ECG
 # ============================================================
 
 def load_ecg_model():
@@ -198,7 +181,7 @@ def load_ecg_model():
 
     if ecg_model is None:
 
-        print("Loading ECG CNN...")
+        print(">>> Loading ECG CNN...")
 
         model = ECGCNN()
 
@@ -220,7 +203,7 @@ def load_ecg_model():
 
         gc.collect()
 
-        print("ECG CNN loaded.")
+        print(">>> ECG CNN loaded")
 
     return ecg_model
 
@@ -236,7 +219,7 @@ def load_nlp_model():
 
     if tokenizer is None:
 
-        print("Loading ClinicalBERT tokenizer...")
+        print(">>> Loading ClinicalBERT tokenizer...")
 
         tokenizer = AutoTokenizer.from_pretrained(
             NLP_MODEL
@@ -244,7 +227,7 @@ def load_nlp_model():
 
     if nlp_model is None:
 
-        print("Loading ClinicalBERT model...")
+        print(">>> Loading ClinicalBERT...")
 
         model = AutoModel.from_pretrained(
             NLP_MODEL
@@ -258,7 +241,7 @@ def load_nlp_model():
 
         gc.collect()
 
-        print("ClinicalBERT loaded.")
+        print(">>> ClinicalBERT loaded")
 
     return tokenizer, nlp_model
 
@@ -273,7 +256,7 @@ def load_cv_model():
 
     if cv_model is None:
 
-        print("Loading ResNet18...")
+        print(">>> Loading ResNet18...")
 
         model = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT
@@ -289,9 +272,46 @@ def load_cv_model():
 
         gc.collect()
 
-        print("ResNet18 loaded.")
+        print(">>> ResNet18 loaded")
 
     return cv_model
+
+
+# ============================================================
+# LOAD FUSION
+# ============================================================
+
+def load_fusion():
+
+    global fusion
+
+    if fusion is None:
+
+        print(">>> Loading CardioFusion...")
+
+        model = CardioFusion()
+
+        state = torch.load(
+            FUSION_MODEL,
+            map_location=DEVICE,
+            weights_only=True
+        )
+
+        model.load_state_dict(state)
+
+        del state
+
+        model.to(DEVICE)
+
+        model.eval()
+
+        fusion = model
+
+        gc.collect()
+
+        print(">>> CardioFusion loaded")
+
+    return fusion
 
 
 # ============================================================
@@ -329,6 +349,9 @@ transform = transforms.Compose([
 
 def get_nlp_features(text: str):
 
+    global tokenizer
+    global nlp_model
+
     tokenizer, model = load_nlp_model()
 
     if not text:
@@ -359,13 +382,25 @@ def get_nlp_features(text: str):
         features = (
             outputs
             .last_hidden_state[:, 0, :]
+            .clone()
             .detach()
         )
 
 
     del inputs
-
     del outputs
+
+    # --------------------------------------------------------
+    # CRITICAL:
+    # Release ClinicalBERT immediately.
+    # --------------------------------------------------------
+
+    tokenizer = None
+    nlp_model = None
+
+    gc.collect()
+
+    print(">>> ClinicalBERT released")
 
     return features
 
@@ -375,6 +410,8 @@ def get_nlp_features(text: str):
 # ============================================================
 
 def get_cv_features(image_path: str):
+
+    global cv_model
 
     if not image_path:
 
@@ -398,24 +435,33 @@ def get_cv_features(image_path: str):
     ).convert("RGB")
 
 
-    image = transform(
+    tensor = transform(
         image
-    )
-
-
-    image = image.unsqueeze(0)
+    ).unsqueeze(0)
 
 
     with torch.inference_mode():
 
-        features = model(
-            image
-        ).detach()
+        features = (
+            model(tensor)
+            .clone()
+            .detach()
+        )
 
 
+    del tensor
     del image
 
+    # --------------------------------------------------------
+    # CRITICAL:
+    # Release ResNet18 immediately.
+    # --------------------------------------------------------
+
+    cv_model = None
+
     gc.collect()
+
+    print(">>> ResNet18 released")
 
     return features
 
@@ -519,89 +565,19 @@ def prepare_ecg_signal(ecg_path: str):
     )
 
 
+    del image_tensor
+    del image
+
     return signal
 
 
 # ============================================================
-# ECG INFERENCE
-# ============================================================
-
-def run_ecg_inference(ecg_path: str):
-
-    signal = prepare_ecg_signal(
-        ecg_path
-    )
-
-    model = load_ecg_model()
-
-
-    with torch.inference_mode():
-
-        features = model.features(
-            signal
-        )
-
-        features = (
-            features
-            .squeeze(-1)
-            .detach()
-        )
-
-
-        output = model.classifier(
-            features
-        )
-
-
-        probabilities = torch.softmax(
-            output,
-            dim=1
-        )
-
-
-        abnormal_probability = (
-            probabilities[0, 1].item()
-        )
-
-
-    result = {
-
-        "abnormal_probability":
-            round(
-                abnormal_probability,
-                4
-            ),
-
-        "risk_percentage":
-            round(
-                abnormal_probability * 100,
-                2
-            )
-    }
-
-
-    del signal
-
-    del features
-
-    del output
-
-    del probabilities
-
-    gc.collect()
-
-
-    return (
-        features if False else None,
-        result
-    )
-
-
-# ============================================================
-# ECG FEATURES + PREDICTION
+# ECG FEATURES
 # ============================================================
 
 def get_ecg_result(ecg_path: str):
+
+    global ecg_model
 
     signal = prepare_ecg_signal(
         ecg_path
@@ -620,6 +596,7 @@ def get_ecg_result(ecg_path: str):
         ecg_features = (
             feature_map
             .squeeze(-1)
+            .clone()
             .detach()
         )
 
@@ -657,14 +634,20 @@ def get_ecg_result(ecg_path: str):
 
 
     del signal
-
     del feature_map
-
     del output
-
     del probabilities
 
+    # --------------------------------------------------------
+    # CRITICAL:
+    # Release ECG model.
+    # --------------------------------------------------------
+
+    ecg_model = None
+
     gc.collect()
+
+    print(">>> ECG CNN released")
 
 
     return ecg_features, result
@@ -681,20 +664,16 @@ def predict_fusion(
 ):
 
     nlp_features = None
-
     cv_features = None
-
     ecg_features = None
-
     output = None
-
     probabilities = None
 
 
     try:
 
         # ====================================================
-        # NLP
+        # 1. NLP
         # ====================================================
 
         print()
@@ -711,16 +690,11 @@ def predict_fusion(
             tuple(nlp_features.shape)
         )
 
-
-        # ====================================================
-        # RELEASE CACHE
-        # ====================================================
-
         gc.collect()
 
 
         # ====================================================
-        # X-RAY
+        # 2. X-RAY
         # ====================================================
 
         print()
@@ -737,12 +711,11 @@ def predict_fusion(
             tuple(cv_features.shape)
         )
 
-
         gc.collect()
 
 
         # ====================================================
-        # ECG
+        # 3. ECG
         # ====================================================
 
         print()
@@ -764,9 +737,60 @@ def predict_fusion(
             f"{ecg_result['risk_percentage']:.2f}%"
         )
 
+        gc.collect()
+
 
         # ====================================================
-        # FUSION
+        # VERIFY DIMENSIONS
+        # ====================================================
+
+        print()
+        print("=" * 65)
+        print("FEATURE VALIDATION")
+        print("=" * 65)
+
+        print(
+            "ECG:",
+            tuple(ecg_features.shape)
+        )
+
+        print(
+            "NLP:",
+            tuple(nlp_features.shape)
+        )
+
+        print(
+            "CV:",
+            tuple(cv_features.shape)
+        )
+
+
+        if ecg_features.shape[1] != 128:
+
+            raise ValueError(
+                f"Invalid ECG feature size: "
+                f"{ecg_features.shape}"
+            )
+
+
+        if nlp_features.shape[1] != 768:
+
+            raise ValueError(
+                f"Invalid NLP feature size: "
+                f"{nlp_features.shape}"
+            )
+
+
+        if cv_features.shape[1] != 512:
+
+            raise ValueError(
+                f"Invalid CV feature size: "
+                f"{cv_features.shape}"
+            )
+
+
+        # ====================================================
+        # 4. FUSION
         # ====================================================
 
         print()
@@ -815,10 +839,6 @@ def predict_fusion(
             "LOW RISK"
         )
 
-
-        # ====================================================
-        # RESULT
-        # ====================================================
 
         result = {
 
@@ -870,6 +890,10 @@ def predict_fusion(
 
     finally:
 
+        # ====================================================
+        # RELEASE REQUEST TENSORS
+        # ====================================================
+
         if nlp_features is not None:
 
             del nlp_features
@@ -895,4 +919,14 @@ def predict_fusion(
             del probabilities
 
 
+        # ====================================================
+        # RELEASE ALL MODELS
+        # ====================================================
+
+        cleanup_memory()
+
         gc.collect()
+
+        print(
+            ">>> MEMORY CLEANUP COMPLETE"
+        )
